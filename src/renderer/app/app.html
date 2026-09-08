@@ -1,0 +1,12 @@
+<main>
+  <h1>{{ title() }}</h1>
+  <p>👋Oui !</p>
+
+  @if (versions.isLoading()) {
+    <p id="info">Chargement…</p>
+  } @else if (versions.value(); as infos) {
+    <p id="info">Utilise Node {{ infos.node }} et Electron {{ infos.electron }}</p>
+  } @else {
+    <p id="info">API Electron indisponible (page ouverte hors d'Electron).</p>
+  }
+</main>

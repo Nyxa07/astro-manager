@@ -1,0 +1,46 @@
+{
+  "name": "astro-manager",
+  "version": "1.0.0",
+  "description": "",
+  "license": "ISC",
+  "author": "",
+  "type": "commonjs",
+  "main": "dist/electron/main/index.js",
+  "scripts": {
+    "ng": "ng",
+    "build": "npm run build:electron && npm run build:renderer",
+    "build:electron": "npm run typecheck:electron && npm run bundle:electron",
+    "typecheck:electron": "tsc -p tsconfig.electron.json",
+    "bundle:electron": "esbuild src/main/index.ts src/preload/index.ts --bundle --platform=node --format=cjs --target=node24 --external:electron --outbase=src --outdir=dist/electron --sourcemap",
+    "build:renderer": "ng build",
+    "start": "npm run build && electron .",
+    "dev": "npm run build:electron && concurrently --kill-others \"ng serve\" \"wait-on tcp:4200 && electron . --dev\"",
+    "test": "npm run test:renderer && npm run test:main",
+    "test:renderer": "ng test --watch=false",
+    "test:main": "vitest run --config vitest.main.config.ts"
+  },
+  "dependencies": {
+    "@angular/common": "^22.1.0",
+    "@angular/compiler": "^22.1.0",
+    "@angular/core": "^22.1.0",
+    "@angular/forms": "^22.1.0",
+    "@angular/platform-browser": "^22.1.0",
+    "@angular/router": "^22.1.0",
+    "rxjs": "~7.8.0",
+    "tslib": "^2.3.0"
+  },
+  "devDependencies": {
+    "@angular/build": "^22.1.7",
+    "@angular/cli": "^22.1.7",
+    "@angular/compiler-cli": "^22.1.0",
+    "@types/node": "^24.10.1",
+    "concurrently": "^9.2.1",
+    "electron": "^44.2.0",
+    "esbuild": "^0.28.2",
+    "jsdom": "^28.0.0",
+    "prettier": "^3.8.1",
+    "typescript": "~6.0.2",
+    "vitest": "^4.0.8",
+    "wait-on": "^9.0.1"
+  }
+}

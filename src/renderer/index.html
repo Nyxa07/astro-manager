@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <title>Bonjour depuis le rendu d'Electron !</title>
+  <base href="/">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- https://developer.mozilla.org/fr/docs/Web/HTTP/CSP
+       style-src 'unsafe-inline' : Angular injecte les styles de composants dans des <style>.
+       ws://localhost:4200 : rechargement à chaud de `ng serve` (npm run dev). -->
+  <meta
+    http-equiv="Content-Security-Policy"
+    content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' ws://localhost:4200"
+  >
+</head>
+<body>
+  <app-root></app-root>
+</body>
+</html>

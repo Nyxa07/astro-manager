@@ -1,0 +1,11 @@
+/* Process principal + preload : code Node.
+   tsc ne sert qu'au typage — c'est esbuild qui produit les bundles
+   (le preload est sandboxé et doit être un fichier autonome). */
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "types": ["node"],
+    "noEmit": true
+  },
+  "include": ["src/main/**/*.ts", "src/preload/**/*.ts", "src/shared/**/*.ts"]
+}

@@ -1,0 +1,58 @@
+{
+  "version": "0.2.0",
+  "compounds": [
+    {
+      // ng serve + Electron : rechargement à chaud, points d'arrêt des deux côtés.
+      "name": "Dev : main + renderer",
+      "configurations": ["Main (dev)", "Renderer"],
+      "stopAll": true
+    },
+    {
+      // Build complet puis chargement en file:// — reproduit le comportement final.
+      "name": "Prod : main + renderer",
+      "configurations": ["Main (prod)", "Renderer"],
+      "stopAll": true
+    }
+  ],
+  "configurations": [
+    {
+      "name": "Main (dev)",
+      "type": "node",
+      "request": "launch",
+      "cwd": "${workspaceFolder}",
+      "runtimeExecutable": "${workspaceFolder}/node_modules/.bin/electron",
+      "windows": {
+        "runtimeExecutable": "${workspaceFolder}/node_modules/.bin/electron.cmd"
+      },
+      "args": [".", "--dev", "--remote-debugging-port=9222"],
+      "preLaunchTask": "ng serve",
+      // Remonte des bundles vers src/main/*.ts via les source maps d'esbuild.
+      "outFiles": ["${workspaceFolder}/dist/electron/**/*.js"],
+      "outputCapture": "std",
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "Main (prod)",
+      "type": "node",
+      "request": "launch",
+      "cwd": "${workspaceFolder}",
+      "runtimeExecutable": "${workspaceFolder}/node_modules/.bin/electron",
+      "windows": {
+        "runtimeExecutable": "${workspaceFolder}/node_modules/.bin/electron.cmd"
+      },
+      "args": [".", "--remote-debugging-port=9222"],
+      "preLaunchTask": "build",
+      "outFiles": ["${workspaceFolder}/dist/electron/**/*.js"],
+      "outputCapture": "std",
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "Renderer",
+      "type": "chrome",
+      "request": "attach",
+      "port": 9222,
+      "webRoot": "${workspaceFolder}/src/renderer",
+      "timeout": 30000
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+/* Renderer : l'app Angular. Ne voit ni les types Node ni src/main. */
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "types": []
+  },
+  "include": ["src/renderer/**/*.ts", "src/shared/**/*.ts"],
+  "exclude": ["src/**/*.spec.ts"]
+}

@@ -1,0 +1,48 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "build:electron",
+      "type": "shell",
+      "command": "npm run build:electron",
+      "problemMatcher": ["$tsc"]
+    },
+    {
+      "label": "build",
+      "type": "shell",
+      "command": "npm run build",
+      "problemMatcher": ["$tsc"]
+    },
+    {
+      // Tâche d'arrière-plan : le debug ne démarre qu'une fois le serveur en écoute.
+      // dependsOn : le main/preload doivent être compilés avant qu'Electron ne se lance.
+      "label": "ng serve",
+      "type": "shell",
+      "command": "npx ng serve",
+      "isBackground": true,
+      "dependsOn": ["build:electron"],
+      "problemMatcher": {
+        "owner": "typescript",
+        "fileLocation": ["relative", "${workspaceFolder}"],
+        "pattern": {
+          "regexp": "^(.*)\\((\\d+),(\\d+)\\):\\s+(error|warning)\\s+(TS\\d+):\\s+(.*)$",
+          "file": 1,
+          "line": 2,
+          "column": 3,
+          "severity": 4,
+          "code": 5,
+          "message": 6
+        },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": "Building\\.\\.\\.",
+          "endsPattern": "Local:\\s+http://localhost:4200"
+        }
+      },
+      "presentation": {
+        "reveal": "silent",
+        "panel": "dedicated"
+      }
+    }
+  ]
+}
