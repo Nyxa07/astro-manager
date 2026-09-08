@@ -1,9 +1,10 @@
 {
   "name": "astro-manager",
   "version": "1.0.0",
-  "description": "",
-  "license": "ISC",
-  "author": "",
+  "description": "Gestion d'une bibliothèque de photographie astronomique : organisation des clichés, scripts Siril et Python, publication.",
+  "author": "Nyxa <nyxa@bryo.me>",
+  "license": "UNLICENSED",
+  "private": true,
   "type": "commonjs",
   "main": "dist/electron/main/index.js",
   "scripts": {
