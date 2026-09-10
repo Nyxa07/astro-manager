@@ -1,18 +1,12 @@
 import { ipcMain } from 'electron';
-import { IPC, type IpcContract, type IpcChannel } from '../shared/ipc';
-import { isVersionKey, type VersionKey } from '../shared/versions';
+import type { IpcChannel, IpcContract } from '../shared/ipc';
+import type { Validator } from './module';
+import { versionsModule } from './modules/versions';
 
-type Validator<C extends IpcChannel> = (args: unknown[]) => Parameters<IpcContract[C]> | null;
-
-const validators = {
-  [IPC.versions.get]: (args) => (args.length === 1 && isVersionKey(args[0]) ? [args[0]] : null),
-} satisfies { [C in IpcChannel]: Validator<C> };
-
-export const handlers = {
-  [IPC.versions.get]: (input: VersionKey): string => {
-    return process.versions[input];
-  },
-} satisfies IpcContract;
+const handlers = { ...versionsModule.handlers } satisfies IpcContract;
+const validators = { ...versionsModule.validators } satisfies {
+  [C in IpcChannel]: Validator<C>;
+};
 
 export function registerIpcHandlers(): void {
   for (const channel of Object.keys(handlers) as IpcChannel[]) {
