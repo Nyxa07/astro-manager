@@ -1,8 +1,6 @@
 import * as path from 'node:path';
 
-export type Resolution =
-  | { ok: true; file: string }
-  | { ok: false; status: number };
+export type Resolution = { ok: true; file: string } | { ok: false; status: number };
 
 /**
  * Traduit le chemin d'une requête app:// en fichier du build Angular.

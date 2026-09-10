@@ -14,11 +14,14 @@ export class App {
       if (!window.electronApi) {
         return null;
       }
-      const result = await Promise.all([window.electronApi.versions.get("electron"), window.electronApi.versions.get("node")])
+      const result = await Promise.all([
+        window.electronApi.versions.get('electron'),
+        window.electronApi.versions.get('node'),
+      ]);
       return {
         electron: result[0] ?? null,
         node: result[1] ?? null,
-      }
+      };
     },
   });
 }
