@@ -1,13 +1,20 @@
 import { beforeEach, describe, expect, expectTypeOf, it, vi } from 'vitest';
-import { IPC, type ElectronApi } from '../shared/ipc';
-import type { VersionKey } from '../shared/versions';
+import { IPC, type ChannelsOf, type ElectronApi, type IpcChannel } from '../shared/ipc';
+import type { VersionKey } from '../shared/modules/versions';
+import { versionsModule } from './modules/versions';
 
 // ipc.ts importe `ipcMain` : on remplace le module electron, indisponible
 // hors de l'application.
 const handle = vi.fn();
 vi.mock('electron', () => ({ ipcMain: { handle: (...args: unknown[]) => handle(...args) } }));
 
-const { handlers, registerIpcHandlers } = await import('./ipc');
+// Espions posés AVANT l'import d'ipc.ts : la composition copie les modules par
+// spread, elle emporte donc les espions. Ils enveloppent l'implémentation
+// réelle, sauf quand un test la remplace explicitement.
+const handler = vi.spyOn(versionsModule.handlers, IPC.versions.get);
+const validator = vi.spyOn(versionsModule.validators, IPC.versions.get);
+
+const { registerIpcHandlers } = await import('./ipc');
 
 /** Aplatit l'arbre IPC en la liste de ses canaux (ses feuilles). */
 const channelsOf = (node: unknown): string[] =>
@@ -44,43 +51,50 @@ describe('registerIpcHandlers', () => {
   });
 });
 
-describe('handler versions:get', () => {
-  it('renvoie la version demandée du process courant', () => {
-    expect(handlers[IPC.versions.get]('node')).toBe(process.versions.node);
-    expect(handlers[IPC.versions.get]('electron')).toBe(process.versions.electron);
+// La composition écrase silencieusement un doublon : deux modules qui
+// déclareraient le même canal ne laisseraient qu'un handler, celui du dernier
+// composé. Rien dans le typage ne l'interdit.
+describe('arbre des canaux', () => {
+  it('ne déclare aucun canal en double', () => {
+    expect(new Set(CHANNELS).size).toBe(CHANNELS.length);
   });
 });
 
-describe('validation des arguments', () => {
+describe('dispatch', () => {
   let invoke: Listener;
 
   beforeEach(() => {
     handle.mockClear();
+    handler.mockClear();
+    validator.mockClear();
     registerIpcHandlers();
     invoke = listenerFor(IPC.versions.get);
   });
 
-  it('accepte une clé du contrat', () => {
-    expect(invoke(null, 'node')).toBe(process.versions.node);
+  it('transmet au handler la sortie du validateur, pas les arguments bruts', () => {
+    // Un validateur a le droit de normaliser : ce qui sort n'est pas ce qui
+    // entre. Le dispatcher doit faire confiance à sa sortie, et à rien d'autre.
+    validator.mockReturnValueOnce(['electron']);
+
+    expect(invoke(null, 'node')).toBe(process.versions.electron);
+    expect(handler).toHaveBeenCalledWith('electron');
   });
 
-  it.each([
-    ['aucun argument', []],
-    ['un argument surnuméraire', ['node', 'electron']],
-    ['une valeur non textuelle', [42]],
-    ['une clé inconnue', ['python']],
-    // Non-régression : le handler indexe un objet du process. Sans la
-    // liste blanche, un canal mal validé deviendrait une primitive de
-    // lecture arbitraire (cf. process.env).
-    ["une clé d'environnement", ['PATH']],
-    ['une clé héritée du prototype', ['toString']],
-  ])('rejette %s', (_label, args) => {
-    expect(() => invoke(null, ...args)).toThrow(/Arguments invalides/);
+  // Le détail des entrées rejetées appartient au validateur du module
+  // (voir modules/versions.spec.ts). Ici on teste la seule responsabilité du
+  // dispatcher : un refus devient une erreur, et le handler n'a pas tourné.
+  it("n'exécute jamais le handler sur des arguments refusés", () => {
+    expect(() => invoke(null, 'python')).toThrow(/Arguments invalides/);
+    expect(handler).not.toHaveBeenCalled();
   });
 });
 
-describe('ElectronApi', () => {
-  it('dérive du contrat une signature asynchrone par canal', () => {
+describe('types dérivés du contrat', () => {
+  it("l'arbre IPC et l'interface IpcContract déclarent les mêmes canaux", () => {
+    expectTypeOf<ChannelsOf<typeof IPC>>().toEqualTypeOf<IpcChannel>();
+  });
+
+  it('ElectronApi dérive du contrat une signature asynchrone par canal', () => {
     expectTypeOf<ElectronApi['versions']['get']>().toEqualTypeOf<
       (input: VersionKey) => Promise<string>
     >();

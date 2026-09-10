@@ -1,4 +1,4 @@
-import { type VersionKey } from './versions';
+import type { VersionKey } from './modules/versions';
 
 export const BRIDGE = 'electronApi' as const;
 
@@ -26,5 +26,7 @@ type ApiFrom<T> = {
       ? never
       : ApiFrom<T[K]>;
 };
+
+export type ChannelsOf<T> = T extends string ? T : { [K in keyof T]: ChannelsOf<T[K]> }[keyof T];
 
 export type ElectronApi = ApiFrom<typeof IPC>;
