@@ -32,12 +32,12 @@ const paths = (node: unknown, path: string[] = []): string[] =>
 const LEAVES = leaves(IPC);
 
 describe('exposition du pont', () => {
-  it('expose l\'API sous le nom partagé', () => {
+  it("expose l'API sous le nom partagé", () => {
     expect(exposeInMainWorld).toHaveBeenCalledTimes(1);
     expect(exposedName).toBe(BRIDGE);
   });
 
-  it('reproduit exactement l\'arborescence du contrat', () => {
+  it("reproduit exactement l'arborescence du contrat", () => {
     expect(paths(api).sort()).toEqual(paths(IPC).sort());
   });
 });

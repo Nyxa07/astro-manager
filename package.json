@@ -18,7 +18,9 @@
     "dev": "npm run build:electron && concurrently --kill-others \"ng serve\" \"wait-on tcp:4200 && electron . --dev\"",
     "test": "npm run test:renderer && npm run test:main",
     "test:renderer": "ng test --watch=false",
-    "test:main": "vitest run --config vitest.main.config.ts"
+    "test:main": "vitest run --config vitest.main.config.ts",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "dependencies": {
     "@angular/common": "^22.1.0",

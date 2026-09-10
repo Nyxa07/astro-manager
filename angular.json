@@ -25,9 +25,7 @@
                 "input": "public"
               }
             ],
-            "styles": [
-              "src/renderer/styles.css"
-            ],
+            "styles": ["src/renderer/styles.css"],
             "index": "src/renderer/index.html",
             "outputPath": {
               "base": "dist/renderer",
