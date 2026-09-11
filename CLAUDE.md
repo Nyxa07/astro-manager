@@ -48,16 +48,17 @@ npx ng test --watch=false --filter "hors Electron"             # filtre par rege
 
 `src/main`, `src/preload`, `src/renderer` ne sont pas des couches : ce sont des **frontières de privilège**, et elles portent des propriétés vérifiables.
 
-| Dossier        | Unité de compilation     | Types ambiants | Produit par                                |
-| -------------- | ------------------------ | -------------- | ------------------------------------------ |
-| `src/main`     | `tsconfig.electron.json` | `node`         | esbuild → `dist/electron/main/index.js`    |
-| `src/preload`  | `tsconfig.electron.json` | `node`         | esbuild → `dist/electron/preload/index.js` |
-| `src/renderer` | `tsconfig.app.json`      | _aucun_        | `ng build` → `dist/renderer/`              |
-| `src/shared`   | les deux                 | —              | inclus dans chacun                         |
+| Dossier        | Unité de compilation     | Globaux visibles   | Produit par                                |
+| -------------- | ------------------------ | ------------------ | ------------------------------------------ |
+| `src/main`     | `tsconfig.electron.json` | Node, pas le DOM   | esbuild → `dist/electron/main/index.js`    |
+| `src/preload`  | `tsconfig.electron.json` | Node, pas le DOM   | esbuild → `dist/electron/preload/index.js` |
+| `src/renderer` | `tsconfig.app.json`      | le DOM, pas Node   | `ng build` → `dist/renderer/`              |
+| `src/shared`   | les deux                 | ni l'un ni l'autre | inclus dans chacun                         |
 
 Conséquences à ne pas casser :
 
 - **Le renderer ne voit ni Node ni `src/main`.** `tsconfig.app.json` a `"types": []`. Un import depuis un composant vers `src/main` doit rester visiblement fautif.
+- **Main ne voit pas le navigateur.** `tsconfig.electron.json` a `"lib": ["ES2022"]` — sans lui, le `lib` par défaut charge le DOM et `open`, `close`, `name`, `status` deviennent des globaux muets dans main : un identifiant oublié ne donne plus « nom introuvable » mais une erreur de signature contre `window.open`. `types` règle les paquets `@types/*` (Node), `lib` les déclarations intégrées (DOM) : deux robinets, un par frontière.
 - **Le preload est sandboxé** : il ne peut `require` que `electron`. Il doit donc être un bundle autonome — c'est la raison d'être d'esbuild ici, `tsc` ne sert qu'au typage (`noEmit: true`).
 - Le découpage est **horizontal par privilège, vertical par nom**. La frontière de privilège est le seul axe horizontal ; en dessous, on regroupe par concept : un module s'appelle pareil de chaque côté (`shared/modules/version.ts`, `main/modules/version.ts`) et rassemble ses collaborateurs dans son dossier. Ne pas regrouper par fonctionnalité au premier niveau (cela dissoudrait la frontière), ni par sorte de code en dessous — pas de `services/`, `repositories/` : cela disperserait un concept.
 
