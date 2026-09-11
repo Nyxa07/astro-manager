@@ -1,10 +1,11 @@
 import { ipcMain } from 'electron';
 import type { IpcChannel, IpcContract } from '../shared/ipc';
 import type { Validator } from './module';
-import { versionsModule } from './modules/versions';
+import { versionModule } from './modules/version';
+import { workspaceModule } from './modules/workspace';
 
-const handlers = { ...versionsModule.handlers } satisfies IpcContract;
-const validators = { ...versionsModule.validators } satisfies {
+const handlers = { ...versionModule.handlers, ...workspaceModule.handlers } satisfies IpcContract;
+const validators = { ...versionModule.validators, ...workspaceModule.validators } satisfies {
   [C in IpcChannel]: Validator<C>;
 };
 

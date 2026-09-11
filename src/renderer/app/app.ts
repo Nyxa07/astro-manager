@@ -15,8 +15,8 @@ export class App {
         return null;
       }
       const result = await Promise.all([
-        window.electronApi.versions.get('electron'),
-        window.electronApi.versions.get('node'),
+        window.electronApi.version.get('electron'),
+        window.electronApi.version.get('node'),
       ]);
       return {
         electron: result[0] ?? null,

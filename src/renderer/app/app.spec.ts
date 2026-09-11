@@ -29,11 +29,15 @@ describe('App', () => {
     });
 
     it("affiche les versions quand le pont d'Electron est présent", async () => {
-      window.electronApi = {
-        versions: {
+      // Le composant n'utilise que `version` : on ne simule que cette branche.
+      // `satisfies Pick<…>` garde la vérification stricte sur ce qui est simulé ;
+      // le `as` est le seul endroit où le pont est déclaré complet sans l'être.
+      const bridge = {
+        version: {
           get: async (key) => ({ node: '24.20.0', electron: '44.2.0' })[key],
         },
-      } satisfies ElectronApi;
+      } satisfies Pick<ElectronApi, 'version'>;
+      window.electronApi = bridge as ElectronApi;
 
       expect(await renderInfo()).toContain('Utilise Node 24.20.0 et Electron 44.2.0');
     });

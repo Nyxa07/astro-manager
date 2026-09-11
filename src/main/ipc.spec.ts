@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, expectTypeOf, it, vi } from 'vitest';
 import { IPC, type ChannelsOf, type ElectronApi, type IpcChannel } from '../shared/ipc';
-import type { VersionKey } from '../shared/modules/versions';
-import { versionsModule } from './modules/versions';
+import type { VersionKey } from '../shared/modules/version';
+import { versionModule } from './modules/version';
 
 // ipc.ts importe `ipcMain` : on remplace le module electron, indisponible
 // hors de l'application.
@@ -11,8 +11,8 @@ vi.mock('electron', () => ({ ipcMain: { handle: (...args: unknown[]) => handle(.
 // Espions posés AVANT l'import d'ipc.ts : la composition copie les modules par
 // spread, elle emporte donc les espions. Ils enveloppent l'implémentation
 // réelle, sauf quand un test la remplace explicitement.
-const handler = vi.spyOn(versionsModule.handlers, IPC.versions.get);
-const validator = vi.spyOn(versionsModule.validators, IPC.versions.get);
+const handler = vi.spyOn(versionModule.handlers, IPC.version.get);
+const validator = vi.spyOn(versionModule.validators, IPC.version.get);
 
 const { registerIpcHandlers } = await import('./ipc');
 
@@ -68,7 +68,7 @@ describe('dispatch', () => {
     handler.mockClear();
     validator.mockClear();
     registerIpcHandlers();
-    invoke = listenerFor(IPC.versions.get);
+    invoke = listenerFor(IPC.version.get);
   });
 
   it('transmet au handler la sortie du validateur, pas les arguments bruts', () => {
@@ -81,7 +81,7 @@ describe('dispatch', () => {
   });
 
   // Le détail des entrées rejetées appartient au validateur du module
-  // (voir modules/versions.spec.ts). Ici on teste la seule responsabilité du
+  // (voir modules/version.spec.ts). Ici on teste la seule responsabilité du
   // dispatcher : un refus devient une erreur, et le handler n'a pas tourné.
   it("n'exécute jamais le handler sur des arguments refusés", () => {
     expect(() => invoke(null, 'python')).toThrow(/Arguments invalides/);
@@ -95,7 +95,7 @@ describe('types dérivés du contrat', () => {
   });
 
   it('ElectronApi dérive du contrat une signature asynchrone par canal', () => {
-    expectTypeOf<ElectronApi['versions']['get']>().toEqualTypeOf<
+    expectTypeOf<ElectronApi['version']['get']>().toEqualTypeOf<
       (input: VersionKey) => Promise<string>
     >();
   });
