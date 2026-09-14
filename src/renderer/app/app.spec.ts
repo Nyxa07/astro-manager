@@ -1,5 +1,6 @@
-import { TestBed } from '@angular/core/testing';
+import { type ComponentFixture, TestBed } from '@angular/core/testing';
 import type { ElectronApi } from '../../shared/ipc';
+import type { WorkspaceInfo } from '../../shared/modules/workspace';
 import { App } from './app';
 
 /** Le texte affiché une fois la resource résolue. */
@@ -48,6 +49,76 @@ describe('App', () => {
       expect(window.electronApi).toBeUndefined();
 
       expect(await renderInfo()).toContain('API Electron indisponible');
+    });
+  });
+
+  describe('workspace', () => {
+    const alpha: WorkspaceInfo = { id: 'a', name: 'alpha', root: '/photos/alpha' };
+    const open = vi.fn<ElectronApi['workspace']['open']>();
+
+    /** Un pont complet — `satisfies ElectronApi` évite tout `as` — dont seul `open` est piloté. */
+    const installBridge = () => {
+      window.electronApi = {
+        version: { get: async () => '0' },
+        workspace: { open, reopen: async () => null, list: async () => [] },
+      } satisfies ElectronApi;
+    };
+
+    /** Monte le composant, attend la resource des versions. */
+    const mount = async (): Promise<ComponentFixture<App>> => {
+      const fixture = TestBed.createComponent(App);
+      await fixture.whenStable();
+      return fixture;
+    };
+
+    const clickOpen = async (fixture: ComponentFixture<App>) => {
+      (fixture.nativeElement as HTMLElement).querySelector('button')?.click();
+      await fixture.whenStable();
+    };
+
+    const text = (fixture: ComponentFixture<App>) =>
+      (fixture.nativeElement as HTMLElement).textContent ?? '';
+
+    beforeEach(() => {
+      open.mockReset();
+    });
+
+    afterEach(() => {
+      delete window.electronApi;
+    });
+
+    it('ouvre un espace via le pont et affiche son identité', async () => {
+      installBridge();
+      open.mockResolvedValue(alpha);
+      const fixture = await mount();
+
+      await clickOpen(fixture);
+
+      expect(open).toHaveBeenCalledOnce();
+      expect(text(fixture)).toContain('/photos/alpha');
+    });
+
+    // `null` signifie « sélecteur annulé », pas « aucun espace » : le process
+    // principal garde le précédent ouvert, l'affichage doit en faire autant.
+    it("conserve l'espace affiché quand le sélecteur est annulé", async () => {
+      installBridge();
+      open.mockResolvedValueOnce(alpha).mockResolvedValueOnce(null);
+      const fixture = await mount();
+
+      await clickOpen(fixture);
+      await clickOpen(fixture);
+
+      expect(open).toHaveBeenCalledTimes(2);
+      expect(text(fixture)).toContain('/photos/alpha');
+    });
+
+    it("n'affiche aucun espace hors Electron", async () => {
+      expect(window.electronApi).toBeUndefined();
+      const fixture = await mount();
+
+      await clickOpen(fixture);
+
+      expect(text(fixture)).not.toContain('INFOS');
     });
   });
 

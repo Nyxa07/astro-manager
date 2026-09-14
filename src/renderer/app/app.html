@@ -9,4 +9,9 @@
   } @else {
     <p id="info">API Electron indisponible (page ouverte hors d'Electron).</p>
   }
+
+  <button (click)="openWorkspace()">Ouvrir WS</button>
+  @if (info(); as info) {
+    <p>INFOS : {{ info.id }}, {{ info.name }}, {{ info.root }}</p>
+  }
 </main>
