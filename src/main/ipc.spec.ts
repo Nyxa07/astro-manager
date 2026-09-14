@@ -1,6 +1,11 @@
-import { beforeEach, describe, expect, expectTypeOf, it, vi } from 'vitest';
+import * as fs from 'node:fs';
+import * as os from 'node:os';
+import * as path from 'node:path';
+import { afterAll, beforeEach, describe, expect, expectTypeOf, it, vi } from 'vitest';
 import { IPC, type ChannelsOf, type ElectronApi, type IpcChannel } from '../shared/ipc';
 import type { VersionKey } from '../shared/modules/version';
+import type { WorkspaceInfo } from '../shared/modules/workspace';
+import { registerIpcHandlers, type IpcDeps } from './ipc';
 import { versionModule } from './modules/version';
 
 // ipc.ts importe `ipcMain` : on remplace le module electron, indisponible
@@ -8,13 +13,20 @@ import { versionModule } from './modules/version';
 const handle = vi.fn();
 vi.mock('electron', () => ({ ipcMain: { handle: (...args: unknown[]) => handle(...args) } }));
 
-// Espions posés AVANT l'import d'ipc.ts : la composition copie les modules par
-// spread, elle emporte donc les espions. Ils enveloppent l'implémentation
-// réelle, sauf quand un test la remplace explicitement.
+// Les dépendances réelles sont construites par main/index.ts ; ici des
+// fausses. Le sélecteur n'est jamais appelé dans ce spec, et le userData ne
+// reçoit rien tant qu'aucun espace n'est ouvert.
+const DEPS: IpcDeps = {
+  dialog: { showOpenDialog: async () => ({ canceled: true, filePaths: [] }) },
+  userDataDir: fs.mkdtempSync(path.join(os.tmpdir(), 'astro-manager-ipc-')),
+};
+afterAll(() => fs.rmSync(DEPS.userDataDir, { recursive: true, force: true }));
+
+// Espions posés avant registerIpcHandlers : la composition copie les modules
+// par spread à chaque appel, elle emporte donc les espions. Ils enveloppent
+// l'implémentation réelle, sauf quand un test la remplace explicitement.
 const handler = vi.spyOn(versionModule.handlers, IPC.version.get);
 const validator = vi.spyOn(versionModule.validators, IPC.version.get);
-
-const { registerIpcHandlers } = await import('./ipc');
 
 /** Aplatit l'arbre IPC en la liste de ses canaux (ses feuilles). */
 const channelsOf = (node: unknown): string[] =>
@@ -33,7 +45,7 @@ const listenerFor = (channel: string): Listener => {
 describe('registerIpcHandlers', () => {
   beforeEach(() => {
     handle.mockClear();
-    registerIpcHandlers();
+    registerIpcHandlers(DEPS);
   });
 
   it('enregistre un handler pour chaque canal du contrat partagé', () => {
@@ -67,7 +79,7 @@ describe('dispatch', () => {
     handle.mockClear();
     handler.mockClear();
     validator.mockClear();
-    registerIpcHandlers();
+    registerIpcHandlers(DEPS);
     invoke = listenerFor(IPC.version.get);
   });
 
@@ -97,6 +109,12 @@ describe('types dérivés du contrat', () => {
   it('ElectronApi dérive du contrat une signature asynchrone par canal', () => {
     expectTypeOf<ElectronApi['version']['get']>().toEqualTypeOf<
       (input: VersionKey) => Promise<string>
+    >();
+  });
+
+  it("ElectronApi n'emballe pas deux fois un handler déjà asynchrone", () => {
+    expectTypeOf<ElectronApi['workspace']['open']>().toEqualTypeOf<
+      () => Promise<WorkspaceInfo | null>
     >();
   });
 });

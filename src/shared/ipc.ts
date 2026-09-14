@@ -9,12 +9,14 @@ export const IPC = {
   },
   workspace: {
     open: 'workspace:open',
+    list: 'workspace:list',
   },
 } as const;
 
 export interface IpcContract {
   [IPC.version.get]: (input: VersionKey) => string;
-  [IPC.workspace.open]: () => WorkspaceInfo;
+  [IPC.workspace.open]: () => Promise<WorkspaceInfo | null>;
+  [IPC.workspace.list]: () => WorkspaceInfo[];
 }
 
 export type IpcChannel = keyof IpcContract;
