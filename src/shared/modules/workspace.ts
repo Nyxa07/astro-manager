@@ -1,14 +1,15 @@
-export type WorkspaceCreateInput = { name: string };
 export type WorkspaceInfo = { name: string; root: string; id: string };
 
-const NAME_MAX = 100;
+export const isWorkspaceInfo = (info: unknown): info is WorkspaceInfo => {
+  if (info === null || typeof info !== 'object') return false;
+  const infoRecord = info as Record<string, unknown>;
 
-export const parseWorkspaceCreateInput = (v: unknown): WorkspaceCreateInput | null => {
-  if (typeof v !== 'object' || v === null || Array.isArray(v)) return null;
-  const name = (v as Record<string, unknown>)['name'];
-  if (typeof name !== 'string') return null;
-  const trimmed = name.trim();
-  if (trimmed.length === 0 || trimmed.length > NAME_MAX) return null;
-  if (/\p{Cc}/u.test(trimmed)) return null;
-  return { name: trimmed };
+  if (typeof infoRecord['name'] !== 'string') return false;
+  if (typeof infoRecord['root'] !== 'string') return false;
+  if (typeof infoRecord['id'] !== 'string') return false;
+
+  if (['name', 'root', 'id'].some((k) => infoRecord[k] === '')) {
+    return false;
+  }
+  return true;
 };

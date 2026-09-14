@@ -1,35 +1,27 @@
 import { IPC, type ChannelsOf } from '../../../shared/ipc';
-import {
-  parseWorkspaceCreateInput,
-  type WorkspaceCreateInput,
-  type WorkspaceInfo,
-} from '../../../shared/modules/workspace';
+import { type WorkspaceInfo } from '../../../shared/modules/workspace';
 import type { Handler, IpcModule, Validator } from '../../module';
 
 type WorkspaceIpc = typeof IPC.workspace;
 type WorkspaceChannel = ChannelsOf<WorkspaceIpc>;
 
-const createValidator: Validator<WorkspaceIpc['create']> = (args) => {
-  if (args.length !== 1) {
+const openValidator: Validator<WorkspaceIpc['open']> = (args) => {
+  if (args.length !== 0) {
     return null;
   }
-  const parsed = parseWorkspaceCreateInput(args[0]);
-  if (parsed === null) {
-    return null;
-  }
-  return [parsed];
+  return [];
 };
 
-const create: Handler<WorkspaceIpc['create']> = (input: WorkspaceCreateInput): WorkspaceInfo => {
+const open: Handler<WorkspaceIpc['open']> = (): WorkspaceInfo => {
   return { id: 'Todo', name: 'test', root: 'Todo' }; // Todo
 };
 
 const handlers = {
-  [IPC.workspace.create]: create,
+  [IPC.workspace.open]: open,
 } satisfies IpcModule<WorkspaceChannel>['handlers'];
 
 const validators = {
-  [IPC.workspace.create]: createValidator,
+  [IPC.workspace.open]: openValidator,
 } satisfies IpcModule<WorkspaceChannel>['validators'];
 
 export const workspaceModule = {
