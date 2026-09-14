@@ -1,15 +1,24 @@
-import type { VersionKey } from './modules/versions';
+import type { VersionKey } from './modules/version';
+import type { WorkspaceInfo } from './modules/workspace';
 
 export const BRIDGE = 'electronApi' as const;
 
 export const IPC = {
-  versions: {
-    get: 'versions:get',
+  version: {
+    get: 'version:get',
+  },
+  workspace: {
+    open: 'workspace:open',
+    reopen: 'workspace:reopen',
+    list: 'workspace:list',
   },
 } as const;
 
 export interface IpcContract {
-  [IPC.versions.get]: (input: VersionKey) => string;
+  [IPC.version.get]: (input: VersionKey) => string;
+  [IPC.workspace.open]: () => Promise<WorkspaceInfo | null>;
+  [IPC.workspace.reopen]: (root: string) => WorkspaceInfo | null;
+  [IPC.workspace.list]: () => WorkspaceInfo[];
 }
 
 export type IpcChannel = keyof IpcContract;

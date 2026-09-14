@@ -1,4 +1,5 @@
 import { Component, resource, signal } from '@angular/core';
+import type { WorkspaceInfo } from '../../shared/modules/workspace';
 
 @Component({
   selector: 'app-root',
@@ -7,6 +8,7 @@ import { Component, resource, signal } from '@angular/core';
 })
 export class App {
   protected readonly title = signal("Bonjour depuis le rendu d'Electron !");
+  protected readonly info = signal<WorkspaceInfo | null>(null);
 
   /** Appelle le process principal via le contextBridge du preload. */
   protected readonly versions = resource({
@@ -15,8 +17,8 @@ export class App {
         return null;
       }
       const result = await Promise.all([
-        window.electronApi.versions.get('electron'),
-        window.electronApi.versions.get('node'),
+        window.electronApi.version.get('electron'),
+        window.electronApi.version.get('node'),
       ]);
       return {
         electron: result[0] ?? null,
@@ -24,4 +26,11 @@ export class App {
       };
     },
   });
+
+  protected async openWorkspace() {
+    const info = await window.electronApi?.workspace.open();
+    if (info) {
+      this.info.set(info);
+    }
+  }
 }

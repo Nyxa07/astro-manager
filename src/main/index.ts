@@ -1,4 +1,4 @@
-import { app, BrowserWindow, net, protocol, shell } from 'electron';
+import { app, BrowserWindow, net, protocol, shell, dialog } from 'electron';
 import * as path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { registerIpcHandlers } from './ipc';
@@ -99,7 +99,7 @@ app.whenReady().then(() => {
     }
   });
 
-  registerIpcHandlers();
+  registerIpcHandlers({ dialog, userDataDir: app.getPath('userData') });
 });
 
 app.on('window-all-closed', () => {

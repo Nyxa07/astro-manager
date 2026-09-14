@@ -48,18 +48,19 @@ npx ng test --watch=false --filter "hors Electron"             # filtre par rege
 
 `src/main`, `src/preload`, `src/renderer` ne sont pas des couches : ce sont des **frontières de privilège**, et elles portent des propriétés vérifiables.
 
-| Dossier        | Unité de compilation     | Types ambiants | Produit par                                |
-| -------------- | ------------------------ | -------------- | ------------------------------------------ |
-| `src/main`     | `tsconfig.electron.json` | `node`         | esbuild → `dist/electron/main/index.js`    |
-| `src/preload`  | `tsconfig.electron.json` | `node`         | esbuild → `dist/electron/preload/index.js` |
-| `src/renderer` | `tsconfig.app.json`      | _aucun_        | `ng build` → `dist/renderer/`              |
-| `src/shared`   | les deux                 | —              | inclus dans chacun                         |
+| Dossier        | Unité de compilation     | Globaux visibles   | Produit par                                |
+| -------------- | ------------------------ | ------------------ | ------------------------------------------ |
+| `src/main`     | `tsconfig.electron.json` | Node, pas le DOM   | esbuild → `dist/electron/main/index.js`    |
+| `src/preload`  | `tsconfig.electron.json` | Node, pas le DOM   | esbuild → `dist/electron/preload/index.js` |
+| `src/renderer` | `tsconfig.app.json`      | le DOM, pas Node   | `ng build` → `dist/renderer/`              |
+| `src/shared`   | les deux                 | ni l'un ni l'autre | inclus dans chacun                         |
 
 Conséquences à ne pas casser :
 
 - **Le renderer ne voit ni Node ni `src/main`.** `tsconfig.app.json` a `"types": []`. Un import depuis un composant vers `src/main` doit rester visiblement fautif.
+- **Main ne voit pas le navigateur.** `tsconfig.electron.json` a `"lib": ["ES2022"]` — sans lui, le `lib` par défaut charge le DOM et `open`, `close`, `name`, `status` deviennent des globaux muets dans main : un identifiant oublié ne donne plus « nom introuvable » mais une erreur de signature contre `window.open`. `types` règle les paquets `@types/*` (Node), `lib` les déclarations intégrées (DOM) : deux robinets, un par frontière.
 - **Le preload est sandboxé** : il ne peut `require` que `electron`. Il doit donc être un bundle autonome — c'est la raison d'être d'esbuild ici, `tsc` ne sert qu'au typage (`noEmit: true`).
-- Le découpage est **horizontal par privilège, vertical par nom** : un module s'appelle pareil de chaque côté (`shared/modules/versions.ts`, `main/modules/versions.ts`). Ne pas regrouper par fonctionnalité au premier niveau, cela dissoudrait la frontière.
+- Le découpage est **horizontal par privilège, vertical par nom**. La frontière de privilège est le seul axe horizontal ; en dessous, on regroupe par concept : un module s'appelle pareil de chaque côté (`shared/modules/version.ts`, `main/modules/version.ts`) et rassemble ses collaborateurs dans son dossier. Ne pas regrouper par fonctionnalité au premier niveau (cela dissoudrait la frontière), ni par sorte de code en dessous — pas de `services/`, `repositories/` : cela disperserait un concept.
 
 ## Le contrat IPC : une seule source de vérité
 
@@ -81,21 +82,38 @@ IPC (arbre de canaux, as const)
 
 1. `src/shared/modules/<nom>.ts` — les types du domaine et ses gardes (`is…`).
 2. `src/shared/ipc.ts` — une branche dans `IPC`, ses signatures dans `IpcContract`.
-3. `src/main/modules/<nom>.ts` — `export const <nom>Module = { handlers, validators } satisfies IpcModule<ChannelsOf<typeof IPC.<nom>>>`.
+3. `src/main/modules/<nom>.ts` — ou `src/main/modules/<nom>/index.ts` dès qu'il a des collaborateurs — `export const <nom>Module = { handlers, validators } satisfies IpcModule<ChannelsOf<typeof IPC.<nom>>>`, ou une fabrique `create<Nom>Module(deps)` s'il a des dépendances.
 4. `src/main/ipc.ts` — étaler le module dans la composition.
+
+Dans le module, chaque handler et chaque validateur est une **constante annotée par son rôle**, jamais une signature recopiée :
+
+```ts
+const create: Handler<typeof IPC.workspace.create> = (input) => { … };
+const createValidator: Validator<typeof IPC.workspace.create> = (args) => { … };
+```
+
+L'annotation va sur la variable — c'est le seul emplacement qui accepte un type de fonction entier — et donne au corps son type contextuel : `input` reçoit le type de fil, `args` reçoit `unknown[]`, et `[parsed]` est inféré comme tuple. `satisfies IpcModule<…>` vérifie ensuite l'ensemble. `Handler<C>` est vide aujourd'hui (`IpcContract[C]`) : c'est la couture prévue pour donner un jour aux handlers un type d'entrée validé, distinct du type de fil, sans toucher aux modules.
 
 **Invariant central : le contrôle d'exhaustivité vit au point de composition, jamais dans le module.** Un module ne `satisfies` que sa propre tranche (`IpcModule<ChannelsOf<…>>`) ; c'est `src/main/ipc.ts` qui porte le contrôle total :
 
 ```ts
-const handlers = { ...versionsModule.handlers } satisfies IpcContract;
-const validators = { ...versionsModule.validators } satisfies { [C in IpcChannel]: Validator<C> };
+const handlers = { ...versionModule.handlers } satisfies IpcContract;
+const validators = { ...versionModule.validators } satisfies { [C in IpcChannel]: Validator<C> };
 ```
 
 Sans ces `satisfies`, oublier de composer un module ne produit qu'un `TS7053` opaque dans la boucle de dispatch — une protection accidentelle de `noImplicitAny`, qui disparaît au premier `as`. Avec eux, l'erreur nomme le canal manquant sur la ligne de composition.
 
 Si un module `satisfies` le contrat global, le découpage ne passe pas l'échelle : au deuxième module, chacun est accusé de ne pas implémenter l'autre.
 
-`Validator<C>` et `IpcModule<C>` vivent dans `src/main/module.ts`, pas dans `ipc.ts` — sinon `ipc.ts` et les modules s'importent mutuellement. Le cycle serait aujourd'hui élidé (usage en position de type seulement) mais deviendrait réel dès qu'`ipc.ts` exporterait une valeur.
+`Handler<C>`, `Validator<C>` et `IpcModule<C>` vivent dans `src/main/module.ts`, pas dans `ipc.ts` — sinon `ipc.ts` et les modules s'importent mutuellement. Le cycle serait aujourd'hui élidé (usage en position de type seulement) mais deviendrait réel dès qu'`ipc.ts` exporterait une valeur.
+
+### Arêtes et collaborateurs
+
+`main/modules/` ne contient que des **arêtes** : ce qui reçoit un appel IPC, valide, délègue, répond. Tout ce dont une arête dépend — `dialog`, fichiers, base — lui est **injecté par sa fabrique**, typé au plus étroit (`Pick<typeof dialog, 'showOpenDialog'>` plutôt que `Dialog`). C'est ce qui rend l'arête testable sans Electron ni disque, et c'est la pression de test qui fait tenir la règle : une arête qui ferait une E/S directe ne pourrait plus se tester en isolation.
+
+- Un module est un fichier tant qu'il est seul ; il devient un dossier `modules/<nom>/` quand il a des collaborateurs. `index.ts` est l'arête et **la seule surface importable** ; les autres fichiers sont privés au module. Le chemin d'import `./modules/<nom>` ne change pas.
+- Un collaborateur remonte à la racine de `main/` quand un second module en a besoin **et** qu'il n'a plus de propriétaire naturel — c'est le cas de `database.ts`. La racine ne grossit que par promotion. Une dépendance de domaine entre modules (`image` aura besoin de la session de `workspace`) s'importe depuis l'`index.ts` de l'autre module, jamais depuis ses fichiers privés.
+- `ipc.ts` est la **racine de composition** : `registerIpcHandlers(deps)` reçoit les dépendances réelles, construites par `index.ts` à `app.whenReady()`, fabrique les modules, compose, enregistre. Les specs lui passent des fausses. Les modules sans dépendance (`version`) restent des constantes. _(À mettre en place avec le premier module à dépendances, `workspace`.)_
 
 ## Tests
 
@@ -115,7 +133,7 @@ Un test nouveau n'est acquis qu'après une mutation qui le fait échouer. Certai
 - Le renderer est servi par le protocole `app://` (`registerSchemesAsPrivileged` + `protocol.handle`), pas par `file://`, qui conserve des privilèges étendus tant que le fusible `grantFileProtocolExtraPrivileges` n'est pas désactivé.
 - `resolveRendererFile` est **pure** (ni Electron ni disque) pour que la traversée de répertoire soit testable : décodage, octet nul, `path.relative`, repli SPA.
 - Verrou de navigation sur `will-navigate`, `will-frame-navigate` et `setWindowOpenHandler` : la fenêtre ne quitte jamais l'origine de l'app ; les liens http(s) partent dans le navigateur système.
-- Tout argument venant du renderer est hostile. Chaque canal a un validateur qui rend `null` en cas de refus ; le handler ne s'exécute jamais sur des arguments non validés. `versions:get` indexe `process.versions` — sans sa liste blanche, ce serait une primitive de lecture arbitraire.
+- Tout argument venant du renderer est hostile. Chaque canal a un validateur qui rend `null` en cas de refus ; le handler ne s'exécute jamais sur des arguments non validés. `version:get` indexe `process.versions` — sans sa liste blanche, ce serait une primitive de lecture arbitraire.
 - Corollaire pour la suite : **le renderer n'envoie jamais un chemin de fichier**. Il demande l'ouverture d'un sélecteur ; c'est le process principal qui appelle `dialog.showOpenDialog`, et seul le chemin qui en sort est fiable.
 
 ## Direction (pas encore implémenté)
@@ -130,5 +148,6 @@ L'application vise la gestion d'une bibliothèque de photo astronomique : rangem
 ## Conventions
 
 - Formatage : `npm run format` avant de conclure une modification. Les réglages vivent dans `.prettierrc` et `.editorconfig` — ne pas les dupliquer ici.
+- Un module porte le nom **singulier** de son concept (`workspace`, `version`), partagé par le dossier, le préfixe de canal, `<nom>Module`, `<Nom>Channel` et les types `<Nom>*`. La pluralité va dans l'opération (`workspace:list`), jamais dans le module. Un champ qui tient une collection reste au pluriel (`versions` dans `App`).
 - Importer les types avec `import type` — le preload et les modules en dépendent pour l'élision (pas de `verbatimModuleSyntax`).
 - Messages de commit en français, à l'impératif : « Aligne l'identité du projet sur astro-manager ».

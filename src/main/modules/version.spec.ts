@@ -1,20 +1,20 @@
 import { describe, expect, it } from 'vitest';
 import { IPC } from '../../shared/ipc';
-import { versionsModule } from './versions';
+import { versionModule } from './version';
 
 // Le module ne touche pas à `electron` : il se teste sans mock, contrairement
 // au dispatcher. C'est le bénéfice du découpage.
-const handler = versionsModule.handlers[IPC.versions.get];
-const validator = versionsModule.validators[IPC.versions.get];
+const handler = versionModule.handlers[IPC.version.get];
+const validator = versionModule.validators[IPC.version.get];
 
-describe('handler versions:get', () => {
+describe('handler version:get', () => {
   it('renvoie la version demandée du process courant', () => {
     expect(handler('node')).toBe(process.versions.node);
     expect(handler('electron')).toBe(process.versions.electron);
   });
 });
 
-describe('validateur versions:get', () => {
+describe('validateur version:get', () => {
   it('accepte une clé du contrat et la transmet telle quelle', () => {
     expect(validator(['node'])).toEqual(['node']);
     expect(validator(['electron'])).toEqual(['electron']);
