@@ -9,6 +9,7 @@ export const IPC = {
   },
   workspace: {
     open: 'workspace:open',
+    reopen: 'workspace:reopen',
     list: 'workspace:list',
   },
 } as const;
@@ -16,6 +17,7 @@ export const IPC = {
 export interface IpcContract {
   [IPC.version.get]: (input: VersionKey) => string;
   [IPC.workspace.open]: () => Promise<WorkspaceInfo | null>;
+  [IPC.workspace.reopen]: (root: string) => WorkspaceInfo | null;
   [IPC.workspace.list]: () => WorkspaceInfo[];
 }
 

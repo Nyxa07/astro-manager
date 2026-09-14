@@ -96,6 +96,48 @@ describe('handler workspace:open', () => {
   });
 });
 
+describe('handler workspace:reopen', () => {
+  it('rouvre un espace du registre et le remonte en tête', async () => {
+    const a = workspaceDir('a');
+    const b = workspaceDir('b');
+    showOpenDialog.mockResolvedValueOnce(chosen(a)).mockResolvedValueOnce(chosen(b));
+    const m = module();
+    const infoA = await m.handlers[IPC.workspace.open]();
+    const infoB = await m.handlers[IPC.workspace.open]();
+
+    expect(m.handlers[IPC.workspace.reopen](a)).toEqual(infoA);
+    expect(m.handlers[IPC.workspace.list]()).toEqual([infoA, infoB]);
+  });
+
+  it("rend null et n'ouvre rien pour un chemin absent du registre", () => {
+    // Le test de sécurité du canal : l'argument du renderer ne sert qu'à
+    // désigner une entrée que main a lui-même écrite. Un chemin qui n'y est
+    // pas — même un vrai dossier — n'est pas ouvert.
+    const stranger = workspaceDir('inconnu');
+
+    expect(module().handlers[IPC.workspace.reopen](stranger)).toBeNull();
+
+    expect(fs.existsSync(libraryFile(stranger))).toBe(false);
+    expect(fs.existsSync(registryFile())).toBe(false);
+  });
+
+  it("propage l'échec d'un espace disparu, sans le recréer ni l'oublier", async () => {
+    const a = workspaceDir('a');
+    showOpenDialog.mockResolvedValueOnce(chosen(a));
+    const m = module();
+    const infoA = await m.handlers[IPC.workspace.open]();
+    fs.rmSync(a, { recursive: true });
+
+    expect(() => m.handlers[IPC.workspace.reopen](a)).toThrow();
+
+    // Pas recréé : un disque débranché ne doit pas se voir planter un
+    // catalogue vide sur son point de montage. Pas oublié : c'est au renderer
+    // de le proposer.
+    expect(fs.existsSync(a)).toBe(false);
+    expect(m.handlers[IPC.workspace.list]()).toEqual([infoA]);
+  });
+});
+
 describe('handler workspace:list', () => {
   it('rend une liste vide au premier lancement', () => {
     expect(module().handlers[IPC.workspace.list]()).toEqual([]);
@@ -114,23 +156,44 @@ describe('handler workspace:list', () => {
 });
 
 // Les validateurs sont purs : un module jetable suffit à les atteindre.
-describe.each(Object.values(IPC.workspace))('validateur %s', (channel) => {
-  const validator = createWorkspaceModule({
-    dialog: { showOpenDialog: async () => cancelled() },
-    userDataDir: '',
-  }).validators[channel];
+const validators = createWorkspaceModule({
+  dialog: { showOpenDialog: async () => cancelled() },
+  userDataDir: '',
+}).validators;
+
+describe.each([IPC.workspace.open, IPC.workspace.list])('validateur %s', (channel) => {
+  const validator = validators[channel];
 
   it("accepte l'absence d'argument", () => {
     expect(validator([])).toEqual([]);
   });
 
-  // Le renderer n'envoie jamais un chemin : il demande le sélecteur, et seul
-  // ce qui en sort est fiable. Un canal qui accepterait un chemin en argument
-  // rouvrirait cette porte.
+  // Le renderer n'envoie jamais un chemin à ouvrir : il demande le sélecteur,
+  // et seul ce qui en sort est fiable. Un canal sans argument qui en
+  // accepterait un rouvrirait cette porte.
   it.each([
     ['un chemin', ['/etc']],
     ['undefined', [undefined]],
     ['un objet', [{}]],
+  ])('refuse %s', (_label, args) => {
+    expect(validator(args)).toBeNull();
+  });
+});
+
+describe('validateur workspace:reopen', () => {
+  const validator = validators[IPC.workspace.reopen];
+
+  // Ici la chaîne est une clé du registre, pas un chemin à ouvrir : le
+  // validateur vérifie la forme, le handler l'appartenance (voir plus haut).
+  it('accepte une chaîne et la transmet telle quelle', () => {
+    expect(validator(['/photos/andromede'])).toEqual(['/photos/andromede']);
+  });
+
+  it.each([
+    ['aucun argument', []],
+    ['un nombre', [42]],
+    ['un objet', [{ root: '/photos/andromede' }]],
+    ['deux chemins', ['/photos/a', '/photos/b']],
   ])('refuse %s', (_label, args) => {
     expect(validator(args)).toBeNull();
   });

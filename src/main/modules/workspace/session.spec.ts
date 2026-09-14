@@ -117,6 +117,21 @@ describe('open', () => {
     expect(workspaceRows(root)).toHaveLength(1);
   });
 
+  it('refuse un dossier absent, sans le créer', () => {
+    // Un disque débranché, un dossier renommé : recréer la racine y planterait
+    // un catalogue neuf et vide, au mauvais endroit.
+    const absent = path.join(dir, 'absent');
+    expect(() => session().open(absent)).toThrow();
+    expect(fs.existsSync(absent)).toBe(false);
+  });
+
+  it("refuse un chemin qui n'est pas un dossier", () => {
+    const file = path.join(dir, 'image.fits');
+    fs.writeFileSync(file, '');
+    expect(() => session().open(file)).toThrow();
+    expect(fs.readFileSync(file, 'utf8')).toBe('');
+  });
+
   it("ferme l'espace précédent en en ouvrant un autre", () => {
     const s = session();
     s.open(workspaceDir('a'));

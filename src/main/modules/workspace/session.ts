@@ -35,7 +35,10 @@ const identify = (db: DatabaseSync, root: string): WorkspaceInfo => {
 
 const openWorkspace = (root: string): Workspace => {
   const file = libraryFile(root);
-  fs.mkdirSync(path.dirname(file), { recursive: true });
+  const dir = path.dirname(file);
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir);
+  }
   const db = openDatabase(file);
   try {
     return { info: identify(db, root), db };
