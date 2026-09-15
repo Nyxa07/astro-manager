@@ -1,0 +1,57 @@
+<!--
+  Écran d'accueil : aucun espace n'est ouvert.
+
+  Le gabarit attend du composant WorkspacePicker :
+    workspace  — l'injectable Workspace : recent(), open(), reopen(root)
+    versions   — la resource des versions ({ electron, node } | null), reprise d'App
+-->
+<section class="picker">
+  <header class="wordmark">
+    <h1>Astro Manager</h1>
+    <span class="tag">bibliothèque d'astrophotographie</span>
+  </header>
+
+  <div class="open-row">
+    <button type="button" class="btn primary" (click)="workspace.open()">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+      </svg>
+      Ouvrir un dossier…
+    </button>
+    @if (versions.value(); as infos) {
+      <span class="versions num">Electron {{ infos.electron }} · Node {{ infos.node }}</span>
+    } @else if (!versions.isLoading()) {
+      <span class="versions">Hors Electron — le pont est indisponible</span>
+    }
+  </div>
+
+  <p class="hint">
+    Un espace de travail est un dossier de clichés. Astro Manager y crée
+    <code>.astro-manager/library.db</code> et ne copie aucun fichier : les images restent en place,
+    référencées en chemins relatifs.
+  </p>
+
+  @if (workspace.recent().length > 0) {
+    <div class="recents">
+      <div class="recents-head">
+        <span class="label">Récents</span>
+        <span class="label">le dernier ouvert en tête</span>
+      </div>
+      <ul class="recent-list">
+        @for (entry of workspace.recent(); track entry.root) {
+          <li>
+            <button type="button" class="recent" (click)="workspace.reopen(entry.root)">
+              <span class="name">
+                {{ entry.name }}
+                @if ($first) {
+                  <span class="chip">dernier ouvert</span>
+                }
+              </span>
+              <span class="root mono">{{ entry.root }}</span>
+            </button>
+          </li>
+        }
+      </ul>
+    </div>
+  }
+</section>
