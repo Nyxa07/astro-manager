@@ -1,0 +1,118 @@
+/*
+ * Jetons de thème. Tout style de l'application s'écrit contre ces variables,
+ * jamais contre une couleur littérale : c'est ce qui rend les thèmes
+ * interchangeables à l'exécution en posant data-theme sur <html>.
+ *
+ *   :root                  sombre — le défaut d'un outil d'astronomie
+ *   [data-theme='light']   clair
+ *   [data-theme='night']   nuit : rouge sur noir, préserve l'adaptation à l'obscurité
+ *
+ * Quatre niveaux de fond, du plus profond au plus proche :
+ *   --bg-0 fond de l'application   --bg-1 panneaux (rail, inspecteur, barres)
+ *   --bg-2 surélevé (cartes, champs)   --bg-3 survol / sélection
+ * Les couleurs sémantiques (good, warn, bad, info) ne sont jamais l'accent :
+ * l'accent marque l'action et la sélection, elles marquent un état.
+ */
+:root {
+  color-scheme: dark;
+
+  --bg-0: #0f131a;
+  --bg-1: #151b23;
+  --bg-2: #1c242e;
+  --bg-3: #26303c;
+  --line: #2a3441;
+  --line-strong: #3b4757;
+
+  --text: #e4e9f0;
+  --text-2: #a3aebc;
+  --text-3: #6c7887;
+
+  /* Or paille : un contour de sélection lisible par-dessus les nébuleuses,
+     rouges (Hα) comme bleues (réflexion), là où un cyan disparaîtrait. */
+  --accent: #e7c36f;
+  --accent-fill: #e7c36f; /* fond du bouton principal */
+  --accent-ink: #1b1506; /* texte posé sur --accent-fill */
+
+  --good: #7fbf7a;
+  --warn: #f09a4a;
+  --bad: #e76f7a;
+  --info: #7eb0e6;
+
+  /* Appliqué aux images (vignettes, aperçus) ; le mode nuit les teinte en rouge. */
+  --image-filter: none;
+  --shadow: 0 8px 24px rgb(0 0 0 / 0.35);
+
+  --radius: 4px;
+  --radius-lg: 8px;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+
+  --font-ui: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'Cascadia Mono', Menlo, monospace;
+
+  --fs-label: 11px;
+  --fs-small: 12px;
+  --fs-base: 13px;
+  --fs-title: 15px;
+  --fs-page: 20px;
+  --fs-display: 28px;
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+
+  --bg-0: #eef0f4;
+  --bg-1: #f7f8fa;
+  --bg-2: #ffffff;
+  --bg-3: #e4e8ee;
+  --line: #d3d8e0;
+  --line-strong: #b9c1cc;
+
+  --text: #1a2029;
+  --text-2: #4f5a68;
+  --text-3: #7e8896;
+
+  --accent: #8f6212;
+  --accent-fill: #dcb358;
+  --accent-ink: #211804;
+
+  --good: #3e8e41;
+  --warn: #c2681a;
+  --bad: #c43c4a;
+  --info: #2e6db4;
+
+  --shadow: 0 8px 24px rgb(20 30 50 / 0.12);
+}
+
+:root[data-theme='night'] {
+  color-scheme: dark;
+
+  --bg-0: #0a0000;
+  --bg-1: #120202;
+  --bg-2: #1a0404;
+  --bg-3: #250707;
+  --line: #3a0c0c;
+  --line-strong: #521212;
+
+  --text: #e8443a;
+  --text-2: #a83028;
+  --text-3: #6e1e18;
+
+  --accent: #ff6a5c;
+  --accent-fill: #b02a20;
+  --accent-ink: #ffd9d4;
+
+  /* En rouge, la sémantique ne tient plus qu'à l'intensité. */
+  --good: #c8382e;
+  --warn: #e04a3c;
+  --bad: #ff5544;
+  --info: #a82e28;
+
+  --image-filter: grayscale(1) sepia(1) saturate(6) hue-rotate(-30deg) brightness(0.55);
+  --shadow: 0 8px 24px rgb(0 0 0 / 0.6);
+}

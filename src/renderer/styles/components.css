@@ -1,0 +1,134 @@
+/*
+ * Briques sans domaine, en CSS pur : bouton, puce d'état, champ.
+ * Un composant Angular (ui/) ne remplace une classe d'ici que lorsqu'il
+ * porte un comportement, pas seulement une apparence.
+ */
+@layer components {
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: 6px var(--space-3);
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius);
+    background: var(--bg-2);
+    white-space: nowrap;
+  }
+
+  .btn:hover {
+    background: var(--bg-3);
+  }
+
+  .btn.primary {
+    background: var(--accent-fill);
+    border-color: transparent;
+    color: var(--accent-ink);
+    font-weight: 500;
+  }
+
+  .btn.primary:hover {
+    filter: brightness(1.06);
+  }
+
+  .btn.quiet {
+    border-color: transparent;
+    background: transparent;
+    color: var(--text-2);
+    padding-inline: var(--space-2);
+  }
+
+  .btn.quiet:hover {
+    background: var(--bg-3);
+    color: var(--text);
+  }
+
+  .btn:disabled {
+    opacity: 0.5;
+    cursor: default;
+    filter: none;
+  }
+
+  /* Icônes SVG inline : tracées, héritent de la couleur du texte. */
+  .btn > svg {
+    width: 15px;
+    height: 15px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.6;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    flex: none;
+  }
+
+  /* Puce d'état : neutre par défaut, colorée par rôle sémantique. */
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 1px var(--space-2);
+    border-radius: 999px;
+    font-size: var(--fs-small);
+    background: var(--bg-3);
+    color: var(--text-2);
+  }
+
+  .chip::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+  }
+
+  .chip.good {
+    color: var(--good);
+    background: color-mix(in oklab, var(--good) 14%, transparent);
+  }
+
+  .chip.warn {
+    color: var(--warn);
+    background: color-mix(in oklab, var(--warn) 14%, transparent);
+  }
+
+  .chip.bad {
+    color: var(--bad);
+    background: color-mix(in oklab, var(--bad) 14%, transparent);
+  }
+
+  .chip.info {
+    color: var(--info);
+    background: color-mix(in oklab, var(--info) 14%, transparent);
+  }
+
+  .field {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-1) 10px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--bg-2);
+    color: var(--text-3);
+    min-width: 0;
+  }
+
+  .field > input {
+    border: 0;
+    background: transparent;
+    outline: 0;
+    min-width: 0;
+    flex: 1;
+  }
+
+  .field > input::placeholder {
+    color: var(--text-3);
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .btn {
+      transition:
+        background-color 120ms ease,
+        border-color 120ms ease;
+    }
+  }
+}
