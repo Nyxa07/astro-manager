@@ -43,8 +43,5 @@ __screenshots__/
 .DS_Store
 Thumbs.db
 
-# graft's local graph cache — regenerable, not committed (run `graft build`).
-/graft/
-
 # Réglages personnels de Claude Code
 .claude/settings.local.json
