@@ -3,7 +3,7 @@
 
   Le gabarit attend du composant WorkspacePicker :
     workspace  — l'injectable Workspace : recent(), open(), reopen(root)
-    versions   — la resource des versions ({ electron, node } | null), reprise d'App
+    version    — l'injectable Version : versions, une resource ({ electron, node } | null)
 -->
 <section class="picker">
   <header class="wordmark">
@@ -18,9 +18,9 @@
       </svg>
       Ouvrir un dossier…
     </button>
-    @if (versions.value(); as infos) {
+    @if (version.versions.value(); as infos) {
       <span class="versions num">Electron {{ infos.electron }} · Node {{ infos.node }}</span>
-    } @else if (!versions.isLoading()) {
+    } @else if (!version.versions.isLoading()) {
       <span class="versions">Hors Electron — le pont est indisponible</span>
     }
   </div>
