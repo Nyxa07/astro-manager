@@ -11,6 +11,7 @@ export const IPC = {
     open: 'workspace:open',
     reopen: 'workspace:reopen',
     list: 'workspace:list',
+    current: 'workspace:current',
   },
 } as const;
 
@@ -19,6 +20,7 @@ export interface IpcContract {
   [IPC.workspace.open]: () => Promise<WorkspaceInfo | null>;
   [IPC.workspace.reopen]: (root: string) => WorkspaceInfo | null;
   [IPC.workspace.list]: () => WorkspaceInfo[];
+  [IPC.workspace.current]: () => WorkspaceInfo | null;
 }
 
 export type IpcChannel = keyof IpcContract;

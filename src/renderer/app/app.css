@@ -1,4 +1,18 @@
-main {
-  font-family: system-ui, sans-serif;
-  padding: 1rem 2rem;
+:host {
+  display: block;
+  height: 100%;
+}
+
+.shell {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-5);
+}
+
+.shell h1 {
+  font-size: var(--fs-page);
+}
+
+.shell .mono {
+  color: var(--text-3);
 }

@@ -1,0 +1,988 @@
+<!doctype html>
+<html lang="fr" data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <title>Maquette — Astro Manager</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!--
+      Référence de direction visuelle, pas une source : les jetons, le socle et
+      les briques viennent du code. Un jeton modifié dans l'application change
+      cette page. S'ouvre en file:// depuis un dépôt où `npm install` a tourné.
+
+      Un écran sort d'ici le jour où il existe dans l'application (l'accueil en
+      est déjà sorti) ; la page d'exposition, en bas, reste.
+    -->
+    <style>
+      @layer base, components;
+    </style>
+    <link rel="stylesheet" href="../node_modules/@fontsource/ibm-plex-sans/latin-400.css" />
+    <link rel="stylesheet" href="../node_modules/@fontsource/ibm-plex-sans/latin-500.css" />
+    <link rel="stylesheet" href="../node_modules/@fontsource/ibm-plex-sans/latin-600.css" />
+    <link rel="stylesheet" href="../node_modules/@fontsource/ibm-plex-sans/latin-ext-400.css" />
+    <link rel="stylesheet" href="../node_modules/@fontsource/ibm-plex-mono/latin-400.css" />
+    <link rel="stylesheet" href="../node_modules/@fontsource/ibm-plex-mono/latin-500.css" />
+    <link rel="stylesheet" href="../src/renderer/styles/tokens.css" />
+    <link rel="stylesheet" href="../src/renderer/styles/base.css" />
+    <link rel="stylesheet" href="../src/renderer/styles/components.css" />
+    <style>
+      /* ---------- Chrome de la maquette : hors application ---------- */
+      body {
+        padding: var(--space-5) var(--space-4);
+      }
+
+      .doc {
+        max-width: 1280px;
+        margin-inline: auto;
+        display: grid;
+        gap: var(--space-4);
+      }
+
+      .doc-bar {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: var(--space-3) var(--space-5);
+        color: var(--text-2);
+      }
+
+      .doc-bar strong {
+        color: var(--text);
+        font-weight: 600;
+      }
+
+      .doc-bar .spacer {
+        flex: 1;
+      }
+
+      .seg {
+        display: inline-flex;
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        background: var(--bg-1);
+        padding: 2px;
+        gap: 2px;
+      }
+
+      .seg button {
+        border: 0;
+        background: transparent;
+        padding: 3px 10px;
+        border-radius: 3px;
+        color: var(--text-2);
+      }
+
+      .seg button[aria-pressed='true'] {
+        background: var(--bg-3);
+        color: var(--text);
+      }
+
+      .window {
+        background: var(--bg-0);
+        border: 1px solid var(--line);
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow);
+        overflow: hidden;
+      }
+
+      .doc h2 {
+        font-size: var(--fs-title);
+      }
+
+      /* ---------- Coquille : pas encore construite ---------- */
+      .shell {
+        display: grid;
+        grid-template-columns: 208px minmax(0, 1fr) 292px;
+        grid-template-rows: 40px minmax(0, 1fr) 26px;
+        grid-template-areas:
+          'top top top'
+          'rail main side'
+          'status status status';
+        min-height: 640px;
+      }
+
+      .top {
+        grid-area: top;
+        display: flex;
+        align-items: center;
+        gap: var(--space-3);
+        padding-inline: 10px var(--space-3);
+        border-bottom: 1px solid var(--line);
+        background: var(--bg-1);
+      }
+
+      .top .ws {
+        display: flex;
+        align-items: center;
+        gap: var(--space-2);
+        font-weight: 500;
+        min-width: 0;
+      }
+
+      .top .ws svg {
+        width: 14px;
+        height: 14px;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 1.8;
+      }
+
+      .top .ws .root {
+        color: var(--text-3);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .top .spacer {
+        flex: 1;
+      }
+
+      .top .field > input {
+        width: 220px;
+      }
+
+      .rail {
+        grid-area: rail;
+        background: var(--bg-1);
+        border-right: 1px solid var(--line);
+        padding: 10px var(--space-2);
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-4);
+      }
+
+      .rail .group {
+        display: grid;
+        gap: 2px;
+      }
+
+      .rail .label {
+        padding: 0 var(--space-2) var(--space-1);
+      }
+
+      .nav {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        padding: 5px var(--space-2);
+        border-radius: var(--radius);
+        color: var(--text-2);
+        border: 0;
+        background: transparent;
+        width: 100%;
+        text-align: left;
+      }
+
+      .nav:hover {
+        background: var(--bg-3);
+        color: var(--text);
+      }
+
+      .nav[aria-current='page'] {
+        background: var(--bg-3);
+        color: var(--text);
+        box-shadow: inset 2px 0 0 var(--accent);
+      }
+
+      .nav svg {
+        width: 15px;
+        height: 15px;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 1.6;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        flex: none;
+      }
+
+      .nav .count {
+        margin-left: auto;
+        color: var(--text-3);
+        font-size: var(--fs-small);
+      }
+
+      .rail .bottom {
+        margin-top: auto;
+      }
+
+      .main {
+        grid-area: main;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+
+      .main-head {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        flex-wrap: wrap;
+        padding: 14px 18px 10px;
+      }
+
+      .main-head h2 {
+        font-size: var(--fs-title);
+      }
+
+      .main-head .stats {
+        color: var(--text-3);
+      }
+
+      .filters {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+        padding: 0 18px var(--space-3);
+        align-items: center;
+      }
+
+      .filter {
+        border: 1px solid var(--line);
+        background: var(--bg-2);
+        border-radius: 999px;
+        padding: 2px 10px;
+        color: var(--text-2);
+        font-size: var(--fs-small);
+      }
+
+      .filter[aria-pressed='true'] {
+        border-color: var(--accent);
+        color: var(--text);
+        background: color-mix(in oklab, var(--accent) 14%, transparent);
+      }
+
+      .filters .sort {
+        margin-left: auto;
+        color: var(--text-3);
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(176px, 1fr));
+        gap: var(--space-3);
+        padding: var(--space-1) 18px 18px;
+        overflow: auto;
+      }
+
+      .tile {
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        background: var(--bg-1);
+        padding: 0;
+        text-align: left;
+        overflow: hidden;
+        display: grid;
+      }
+
+      .tile:hover {
+        border-color: var(--line-strong);
+        background: var(--bg-2);
+      }
+
+      /* La sélection en accent : lisible par-dessus n'importe quelle vignette. */
+      .tile[aria-pressed='true'] {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 1px var(--accent);
+      }
+
+      .thumb {
+        width: 100%;
+        aspect-ratio: 3 / 2;
+        filter: var(--image-filter);
+      }
+
+      .tile .cap {
+        padding: 7px 9px 8px;
+        display: grid;
+        gap: 1px;
+      }
+
+      .tile .obj {
+        font-weight: 500;
+        display: flex;
+        justify-content: space-between;
+        gap: var(--space-2);
+      }
+
+      .tile .obj .f {
+        color: var(--text-3);
+        font-family: var(--font-mono);
+        font-size: var(--fs-label);
+      }
+
+      .tile .sub {
+        color: var(--text-3);
+        font-size: var(--fs-small);
+      }
+
+      .side {
+        grid-area: side;
+        background: var(--bg-1);
+        border-left: 1px solid var(--line);
+        padding: 14px var(--space-4);
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+        overflow: auto;
+        min-width: 0;
+      }
+
+      .side h3 {
+        font-size: var(--fs-title);
+      }
+
+      .side .alias {
+        color: var(--text-2);
+      }
+
+      .side .chips {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+      }
+
+      .meta {
+        display: grid;
+        grid-template-columns: max-content 1fr;
+        column-gap: 14px;
+        row-gap: 5px;
+        align-items: baseline;
+      }
+
+      .meta dt {
+        color: var(--text-3);
+      }
+
+      .meta dd {
+        min-width: 0;
+      }
+
+      .meta dd.mono {
+        overflow-wrap: anywhere;
+        color: var(--text-2);
+      }
+
+      .side .actions {
+        display: grid;
+        gap: 6px;
+        margin-top: auto;
+      }
+
+      .side .actions .btn {
+        justify-content: center;
+      }
+
+      .status {
+        grid-area: status;
+        display: flex;
+        align-items: center;
+        gap: var(--space-4);
+        padding-inline: var(--space-3);
+        border-top: 1px solid var(--line);
+        background: var(--bg-1);
+        color: var(--text-3);
+        font-size: var(--fs-small);
+      }
+
+      .status .spacer {
+        flex: 1;
+      }
+
+      .status .dot {
+        display: inline-block;
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--good);
+        margin-right: 6px;
+        vertical-align: 1px;
+      }
+
+      @media (max-width: 900px) {
+        .shell {
+          grid-template-columns: minmax(0, 1fr);
+          grid-template-rows: auto auto minmax(0, 1fr) auto auto;
+          grid-template-areas:
+            'top'
+            'rail'
+            'main'
+            'side'
+            'status';
+        }
+
+        .rail {
+          border-right: 0;
+          border-bottom: 1px solid var(--line);
+          flex-direction: row;
+          flex-wrap: wrap;
+          gap: 6px;
+        }
+
+        .rail .label,
+        .rail .bottom {
+          display: none;
+        }
+
+        .rail .group {
+          display: contents;
+        }
+
+        .nav {
+          width: auto;
+        }
+
+        .side {
+          border-left: 0;
+          border-top: 1px solid var(--line);
+        }
+
+        .top .ws .root,
+        .top .field {
+          display: none;
+        }
+      }
+
+      /* ---------- Exposition du système ---------- */
+      .expo {
+        display: grid;
+        gap: var(--space-4);
+        padding: var(--space-5);
+        border: 1px solid var(--line);
+        border-radius: var(--radius-lg);
+        background: var(--bg-1);
+      }
+
+      .expo section {
+        display: grid;
+        gap: var(--space-2);
+      }
+
+      .swatches {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--space-2);
+      }
+
+      .sw {
+        display: grid;
+        gap: var(--space-1);
+        width: 120px;
+      }
+
+      .sw i {
+        display: block;
+        height: 28px;
+        border-radius: var(--radius);
+        border: 1px solid var(--line);
+      }
+
+      .sw span {
+        font-family: var(--font-mono);
+        font-size: var(--fs-label);
+        color: var(--text-3);
+      }
+
+      .types {
+        display: grid;
+        gap: 6px;
+      }
+
+      .types .t {
+        display: grid;
+        grid-template-columns: 200px 1fr;
+        gap: var(--space-3);
+        align-items: baseline;
+      }
+
+      .row {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: var(--space-2);
+      }
+
+      @media (max-width: 600px) {
+        .types .t {
+          grid-template-columns: 1fr;
+          gap: 2px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="doc">
+      <header class="doc-bar">
+        <div>
+          <strong>Maquette</strong> · référence de direction visuelle, jetons lus dans
+          <span class="mono">src/renderer/styles</span> · données d'exemple
+        </div>
+        <div class="spacer"></div>
+        <nav class="seg" aria-label="Thème">
+          <button type="button" data-theme="dark" aria-pressed="true">Sombre</button>
+          <button type="button" data-theme="light" aria-pressed="false">Clair</button>
+          <button type="button" data-theme="night" aria-pressed="false">Nuit</button>
+        </nav>
+      </header>
+
+      <h2>Coquille — un espace ouvert (à construire)</h2>
+
+      <div class="window">
+        <section class="shell">
+          <header class="top">
+            <div class="ws">
+              <span>Ciel profond 2026</span>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
+              <span class="root mono">/home/nyxa/Astro/ciel-profond</span>
+            </div>
+            <div class="spacer"></div>
+            <label class="field">
+              <svg
+                viewBox="0 0 24 24"
+                width="14"
+                height="14"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.8"
+                aria-hidden="true"
+              >
+                <circle cx="11" cy="11" r="7" />
+                <path d="m20 20-3.5-3.5" />
+              </svg>
+              <input id="search" type="search" placeholder="Objet, filtre, nuit…" />
+            </label>
+            <button type="button" class="btn quiet">Importer une nuit…</button>
+          </header>
+
+          <nav class="rail" aria-label="Sections">
+            <div class="group">
+              <span class="label">Bibliothèque</span>
+              <button type="button" class="nav" aria-current="page">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <rect x="3" y="3" width="7" height="7" rx="1" />
+                  <rect x="14" y="3" width="7" height="7" rx="1" />
+                  <rect x="3" y="14" width="7" height="7" rx="1" />
+                  <rect x="14" y="14" width="7" height="7" rx="1" />
+                </svg>
+                Clichés <span class="count num">1 248</span>
+              </button>
+              <button type="button" class="nav">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <circle cx="12" cy="12" r="3" />
+                  <path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M5 19l2-2M17 7l2-2" />
+                </svg>
+                Objets <span class="count num">14</span>
+              </button>
+              <button type="button" class="nav">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M21 13A8 8 0 1 1 11 3a6 6 0 0 0 10 10z" />
+                </svg>
+                Nuits <span class="count num">23</span>
+              </button>
+            </div>
+            <div class="group">
+              <span class="label">Traitement</span>
+              <button type="button" class="nav">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="m8 8-4 4 4 4M16 8l4 4-4 4M14 4l-4 16" />
+                </svg>
+                Scripts Siril <span class="count num">6</span>
+              </button>
+              <button type="button" class="nav">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M4 17h16M4 12h16M4 7h16" />
+                </svg>
+                Python <span class="count num">2</span>
+              </button>
+            </div>
+            <div class="group">
+              <span class="label">Partage</span>
+              <button type="button" class="nav">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M12 3v13M7 8l5-5 5 5M5 21h14" />
+                </svg>
+                Publication
+              </button>
+            </div>
+            <div class="group bottom">
+              <button type="button" class="nav">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <circle cx="12" cy="12" r="3" />
+                  <path
+                    d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"
+                  />
+                </svg>
+                Réglages
+              </button>
+            </div>
+          </nav>
+
+          <main class="main">
+            <div class="main-head">
+              <h2>Clichés</h2>
+              <span class="stats num">1 248 brutes · 14 objets · 23 nuits · 187 Go</span>
+            </div>
+            <div class="filters" role="group" aria-label="Filtre">
+              <button type="button" class="filter" aria-pressed="true">Tous</button>
+              <button type="button" class="filter" aria-pressed="false">L</button>
+              <button type="button" class="filter" aria-pressed="false">RGB</button>
+              <button type="button" class="filter" aria-pressed="false">Hα</button>
+              <button type="button" class="filter" aria-pressed="false">OIII</button>
+              <button type="button" class="filter" aria-pressed="false">SII</button>
+              <span class="sort">Tri : nuit, la plus récente d'abord</span>
+            </div>
+            <div class="grid" id="grid"></div>
+          </main>
+
+          <aside class="side" id="side" aria-label="Inspecteur"></aside>
+
+          <footer class="status">
+            <span><i class="dot"></i>library.db · schéma v1</span>
+            <span class="num">1 248 clichés indexés</span>
+            <span class="spacer"></span>
+            <span>Aucun script en cours</span>
+          </footer>
+        </section>
+      </div>
+
+      <h2>Exposition du système</h2>
+
+      <div class="expo">
+        <section>
+          <span class="label">Jetons de couleur — lus sur le thème courant</span>
+          <div class="swatches" id="swatches"></div>
+        </section>
+
+        <section>
+          <span class="label">Rôles typographiques</span>
+          <div class="types">
+            <div class="t">
+              <span class="label">Interface · Plex Sans 13</span
+              ><span>Empilement de 42 poses de 300 s sur NGC 7000, filtre Hα.</span>
+            </div>
+            <div class="t">
+              <span class="label">Données · Plex Mono 12</span
+              ><span class="mono"
+                >2026/08/14/NGC7000/Ha/Light_NGC7000_300s_Ha_001.fits · RA 20h 58m 47s · Dec +44°
+                19′</span
+              >
+            </div>
+            <div class="t">
+              <span class="label">Étiquette · 11 capitales</span
+              ><span class="label">Bibliothèque · Traitement · Partage</span>
+            </div>
+            <div class="t">
+              <span class="label">Chiffres tabulaires · .num</span
+              ><span class="num">1 248 · 42 × 300 s · −10 °C · 187 Go</span>
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <span class="label">Briques — components.css</span>
+          <div class="row">
+            <button type="button" class="btn primary">Ouvrir un dossier…</button>
+            <button type="button" class="btn">Script d'empilement…</button>
+            <button type="button" class="btn quiet">Afficher dans le dossier</button>
+            <button type="button" class="btn" disabled>Indisponible</button>
+            <span class="chip">dernier ouvert</span>
+            <span class="chip good">empilement prêt</span>
+            <span class="chip warn">3 brutes rejetées</span>
+            <span class="chip bad">fichier absent</span>
+            <span class="chip info">à empiler</span>
+            <label class="field"
+              ><input id="expo-search" type="search" placeholder="Rechercher…"
+            /></label>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <script>
+      // ----- Données d'exemple : rien n'est lu sur disque -----
+      const frames = [
+        {
+          obj: 'NGC 7000',
+          alias: 'Amérique du Nord',
+          filter: 'Hα',
+          n: 42,
+          exp: 300,
+          night: '2026-08-14',
+          hue: 350,
+          gain: 100,
+          temp: -10,
+          rejected: 0,
+          stack: true,
+          path: '2026/08/14/NGC7000/Ha/Light_NGC7000_300s_Ha_001.fits',
+        },
+        {
+          obj: 'IC 1396',
+          alias: 'Trompe d’éléphant',
+          filter: 'SII',
+          n: 36,
+          exp: 300,
+          night: '2026-08-15',
+          hue: 25,
+          gain: 100,
+          temp: -10,
+          rejected: 2,
+          stack: false,
+          path: '2026/08/15/IC1396/SII/Light_IC1396_300s_SII_001.fits',
+        },
+        {
+          obj: 'M 31',
+          alias: 'Andromède',
+          filter: 'L',
+          n: 96,
+          exp: 120,
+          night: '2026-09-05',
+          hue: 215,
+          gain: 100,
+          temp: -10,
+          rejected: 3,
+          stack: true,
+          path: '2026/09/05/M31/L/Light_M31_120s_L_001.fits',
+        },
+        {
+          obj: 'NGC 6992',
+          alias: 'Dentelles du Cygne',
+          filter: 'OIII',
+          n: 40,
+          exp: 300,
+          night: '2026-08-14',
+          hue: 175,
+          gain: 100,
+          temp: -10,
+          rejected: 0,
+          stack: true,
+          path: '2026/08/14/NGC6992/OIII/Light_NGC6992_300s_OIII_001.fits',
+        },
+        {
+          obj: 'M 45',
+          alias: 'Pléiades',
+          filter: 'RGB',
+          n: 60,
+          exp: 90,
+          night: '2026-09-11',
+          hue: 225,
+          gain: 100,
+          temp: -10,
+          rejected: 0,
+          stack: false,
+          path: '2026/09/11/M45/RGB/Light_M45_90s_RGB_001.fits',
+        },
+        {
+          obj: 'IC 5070',
+          alias: 'Pélican',
+          filter: 'Hα',
+          n: 38,
+          exp: 300,
+          night: '2026-08-15',
+          hue: 355,
+          gain: 100,
+          temp: -10,
+          rejected: 1,
+          stack: false,
+          path: '2026/08/15/IC5070/Ha/Light_IC5070_300s_Ha_001.fits',
+        },
+        {
+          obj: 'M 27',
+          alias: 'Haltère',
+          filter: 'OIII',
+          n: 30,
+          exp: 180,
+          night: '2026-07-19',
+          hue: 165,
+          gain: 100,
+          temp: -5,
+          rejected: 0,
+          stack: true,
+          path: '2026/07/19/M27/OIII/Light_M27_180s_OIII_001.fits',
+        },
+        {
+          obj: 'M 13',
+          alias: 'Grand amas d’Hercule',
+          filter: 'L',
+          n: 80,
+          exp: 60,
+          night: '2026-06-20',
+          hue: 45,
+          gain: 100,
+          temp: -5,
+          rejected: 0,
+          stack: true,
+          path: '2026/06/20/M13/L/Light_M13_60s_L_001.fits',
+        },
+        {
+          obj: 'M 42',
+          alias: 'Grande nébuleuse d’Orion',
+          filter: 'RGB',
+          n: 120,
+          exp: 30,
+          night: '2026-01-18',
+          hue: 300,
+          gain: 100,
+          temp: -15,
+          rejected: 6,
+          stack: true,
+          path: '2026/01/18/M42/RGB/Light_M42_30s_RGB_001.fits',
+        },
+      ];
+
+      const dayMonth = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'short' });
+      const longDate = new Intl.DateTimeFormat('fr-FR', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+      });
+      const asDate = (iso) => new Date(iso + 'T22:00:00');
+      const duration = (s) => {
+        const h = Math.floor(s / 3600);
+        const m = Math.round((s % 3600) / 60);
+        return h ? `${h} h ${String(m).padStart(2, '0')}` : `${m} min`;
+      };
+
+      // ----- Vignettes : champ d'étoiles procédural, stable par graine -----
+      const mulberry = (a) => () => {
+        a |= 0;
+        a = (a + 0x6d2b79f5) | 0;
+        let t = Math.imul(a ^ (a >>> 15), 1 | a);
+        t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+      };
+      const paint = (canvas, seed, hue) => {
+        const w = (canvas.width = 300);
+        const h = (canvas.height = 200);
+        const ctx = canvas.getContext('2d');
+        const rnd = mulberry(seed);
+        ctx.fillStyle = '#05070d';
+        ctx.fillRect(0, 0, w, h);
+        for (let k = 0; k < 2; k++) {
+          const cx = w * (0.3 + rnd() * 0.4);
+          const cy = h * (0.3 + rnd() * 0.4);
+          const r = w * (0.25 + rnd() * 0.3);
+          const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+          g.addColorStop(0, `hsl(${hue} 70% 45% / ${0.5 - k * 0.2})`);
+          g.addColorStop(1, 'hsl(0 0% 0% / 0)');
+          ctx.fillStyle = g;
+          ctx.fillRect(0, 0, w, h);
+        }
+        for (let i = 0; i < 140; i++) {
+          const x = rnd() * w;
+          const y = rnd() * h;
+          const m = rnd();
+          const rad = m > 0.96 ? 1.8 : m > 0.8 ? 1.1 : 0.6;
+          ctx.fillStyle = `hsl(${rnd() > 0.5 ? 215 : 40} 40% ${70 + rnd() * 30}% / ${0.5 + rnd() * 0.5})`;
+          ctx.beginPath();
+          ctx.arc(x, y, rad, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      };
+
+      // ----- Bibliothèque -----
+      const grid = document.getElementById('grid');
+      const side = document.getElementById('side');
+      let selected = 0;
+
+      const renderGrid = () => {
+        grid.innerHTML = frames
+          .map(
+            (f, i) => `
+            <button type="button" class="tile" data-i="${i}" aria-pressed="${i === selected}">
+              <canvas class="thumb" data-seed="${i + 11}" data-hue="${f.hue}" aria-label="Aperçu ${f.obj}"></canvas>
+              <span class="cap">
+                <span class="obj">${f.obj}<span class="f">${f.filter}</span></span>
+                <span class="sub num">${f.n} × ${f.exp} s · ${dayMonth.format(asDate(f.night))}</span>
+              </span>
+            </button>`,
+          )
+          .join('');
+        grid
+          .querySelectorAll('canvas.thumb')
+          .forEach((c) => paint(c, +c.dataset.seed, +c.dataset.hue));
+      };
+
+      const renderSide = () => {
+        const f = frames[selected];
+        const chips = [
+          f.stack
+            ? '<span class="chip good">empilement prêt</span>'
+            : '<span class="chip info">à empiler</span>',
+          f.rejected
+            ? `<span class="chip warn">${f.rejected} brute${f.rejected > 1 ? 's' : ''} rejetée${f.rejected > 1 ? 's' : ''}</span>`
+            : '',
+        ].join('');
+        side.innerHTML = `
+          <div>
+            <h3>${f.obj}</h3>
+            <div class="alias">${f.alias}</div>
+          </div>
+          <div class="chips">${chips}</div>
+          <dl class="meta num">
+            <dt>Nuit</dt><dd>${longDate.format(asDate(f.night))}</dd>
+            <dt>Filtre</dt><dd>${f.filter}</dd>
+            <dt>Poses</dt><dd>${f.n} × ${f.exp} s · ${duration(f.n * f.exp)}</dd>
+            <dt>Gain · offset</dt><dd>${f.gain} · 50</dd>
+            <dt>Capteur</dt><dd>${f.temp} °C · bin 1×1</dd>
+            <dt>Télescope</dt><dd>Newton 200/800</dd>
+            <dt>Caméra</dt><dd>ASI 2600MM Pro</dd>
+            <dt>Chemin</dt><dd class="mono">${f.path}</dd>
+          </dl>
+          <div class="actions">
+            <button type="button" class="btn primary">Ouvrir dans Siril</button>
+            <button type="button" class="btn">Script d'empilement…</button>
+            <button type="button" class="btn quiet">Afficher dans le dossier</button>
+          </div>`;
+      };
+
+      grid.addEventListener('click', (e) => {
+        const tile = e.target.closest('.tile');
+        if (!tile) return;
+        selected = +tile.dataset.i;
+        grid
+          .querySelectorAll('.tile')
+          .forEach((t) => t.setAttribute('aria-pressed', String(t === tile)));
+        renderSide();
+      });
+
+      renderGrid();
+      renderSide();
+
+      // ----- Thème : data-theme sur <html>, comme l'application -----
+      const tokens = [
+        'bg-0',
+        'bg-1',
+        'bg-2',
+        'bg-3',
+        'line',
+        'text',
+        'text-2',
+        'text-3',
+        'accent',
+        'good',
+        'warn',
+        'bad',
+        'info',
+      ];
+      const renderSwatches = () => {
+        const cs = getComputedStyle(document.documentElement);
+        document.getElementById('swatches').innerHTML = tokens
+          .map(
+            (t) =>
+              `<div class="sw"><i style="background:var(--${t})"></i><span>--${t} ${cs.getPropertyValue('--' + t).trim()}</span></div>`,
+          )
+          .join('');
+      };
+      document.querySelectorAll('.seg [data-theme]').forEach((b) =>
+        b.addEventListener('click', () => {
+          document.documentElement.dataset.theme = b.dataset.theme;
+          document
+            .querySelectorAll('.seg [data-theme]')
+            .forEach((o) => o.setAttribute('aria-pressed', String(o === b)));
+          renderSwatches();
+        }),
+      );
+      renderSwatches();
+    </script>
+  </body>
+</html>

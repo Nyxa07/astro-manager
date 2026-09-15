@@ -1,1 +1,25 @@
-/* You can add global styles to this file, and also import other style files */
+/*
+ * Point d'entrée des styles globaux (angular.json → styles).
+ *
+ * Ordre des couches : base < components. Les styles de composants Angular
+ * sont hors couche, donc toujours prioritaires : un composant ajuste une
+ * brique sans jamais combattre sa spécificité.
+ */
+@layer base, components;
+
+/* Polices auto-hébergées (CSP default-src 'self') : IBM Plex, licence OFL.
+   Latin + latin étendu (œ, Œ, …) ; les graisses réellement utilisées. */
+@import '@fontsource/ibm-plex-sans/latin-400.css';
+@import '@fontsource/ibm-plex-sans/latin-500.css';
+@import '@fontsource/ibm-plex-sans/latin-600.css';
+@import '@fontsource/ibm-plex-sans/latin-ext-400.css';
+@import '@fontsource/ibm-plex-sans/latin-ext-500.css';
+@import '@fontsource/ibm-plex-sans/latin-ext-600.css';
+@import '@fontsource/ibm-plex-mono/latin-400.css';
+@import '@fontsource/ibm-plex-mono/latin-500.css';
+@import '@fontsource/ibm-plex-mono/latin-ext-400.css';
+@import '@fontsource/ibm-plex-mono/latin-ext-500.css';
+
+@import './styles/tokens.css';
+@import './styles/base.css';
+@import './styles/components.css';

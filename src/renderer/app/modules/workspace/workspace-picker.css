@@ -1,0 +1,111 @@
+/* Une colonne centrée, dimensionnée par son contenu : l'écran n'a qu'un geste à proposer. */
+:host {
+  display: grid;
+  place-content: center;
+  min-height: 100%;
+  padding: var(--space-6) var(--space-5);
+}
+
+.picker {
+  width: min(100%, 560px);
+  display: grid;
+  gap: var(--space-5);
+}
+
+.wordmark {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.wordmark h1 {
+  font-size: var(--fs-display);
+  letter-spacing: -0.01em;
+}
+
+.wordmark .tag {
+  color: var(--text-2);
+}
+
+.open-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.versions {
+  color: var(--text-3);
+}
+
+.hint {
+  color: var(--text-2);
+  max-width: 62ch;
+}
+
+.hint code {
+  color: var(--text);
+  background: var(--bg-2);
+  padding: 1px 5px;
+  border-radius: 3px;
+}
+
+.recents {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.recents-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.recent-list {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--bg-1);
+  overflow: hidden;
+}
+
+.recent-list li + li {
+  border-top: 1px solid var(--line);
+}
+
+/* Toute la ligne est le bouton : une cible large, un seul focus. */
+.recent {
+  width: 100%;
+  display: grid;
+  gap: 2px;
+  padding: 10px 14px;
+  border: 0;
+  background: transparent;
+  text-align: left;
+}
+
+.recent:hover {
+  background: var(--bg-3);
+}
+
+.recent:focus-visible {
+  outline-offset: -2px;
+}
+
+.recent .name {
+  font-weight: 500;
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+}
+
+.recent .root {
+  color: var(--text-3);
+  overflow-wrap: anywhere;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .recent {
+    transition: background-color 120ms ease;
+  }
+}
