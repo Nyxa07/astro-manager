@@ -155,30 +155,57 @@ describe('handler workspace:list', () => {
   });
 });
 
+describe('handler workspace:current', () => {
+  it("rend null tant qu'aucun espace n'est ouvert", () => {
+    expect(module().handlers[IPC.workspace.current]()).toBeNull();
+  });
+
+  it("rend l'identité de l'espace ouvert", async () => {
+    showOpenDialog.mockResolvedValue(chosen(workspaceDir()));
+    const m = module();
+    const info = await m.handlers[IPC.workspace.open]();
+
+    expect(m.handlers[IPC.workspace.current]()).toEqual(info);
+  });
+
+  it("garde l'espace ouvert quand une réouverture est refusée", async () => {
+    showOpenDialog.mockResolvedValue(chosen(workspaceDir()));
+    const m = module();
+    const info = await m.handlers[IPC.workspace.open]();
+
+    m.handlers[IPC.workspace.reopen](workspaceDir('inconnu'));
+
+    expect(m.handlers[IPC.workspace.current]()).toEqual(info);
+  });
+});
+
 // Les validateurs sont purs : un module jetable suffit à les atteindre.
 const validators = createWorkspaceModule({
   dialog: { showOpenDialog: async () => cancelled() },
   userDataDir: '',
 }).validators;
 
-describe.each([IPC.workspace.open, IPC.workspace.list])('validateur %s', (channel) => {
-  const validator = validators[channel];
+describe.each([IPC.workspace.open, IPC.workspace.list, IPC.workspace.current])(
+  'validateur %s',
+  (channel) => {
+    const validator = validators[channel];
 
-  it("accepte l'absence d'argument", () => {
-    expect(validator([])).toEqual([]);
-  });
+    it("accepte l'absence d'argument", () => {
+      expect(validator([])).toEqual([]);
+    });
 
-  // Le renderer n'envoie jamais un chemin à ouvrir : il demande le sélecteur,
-  // et seul ce qui en sort est fiable. Un canal sans argument qui en
-  // accepterait un rouvrirait cette porte.
-  it.each([
-    ['un chemin', ['/etc']],
-    ['undefined', [undefined]],
-    ['un objet', [{}]],
-  ])('refuse %s', (_label, args) => {
-    expect(validator(args)).toBeNull();
-  });
-});
+    // Le renderer n'envoie jamais un chemin à ouvrir : il demande le sélecteur,
+    // et seul ce qui en sort est fiable. Un canal sans argument qui en
+    // accepterait un rouvrirait cette porte.
+    it.each([
+      ['un chemin', ['/etc']],
+      ['undefined', [undefined]],
+      ['un objet', [{}]],
+    ])('refuse %s', (_label, args) => {
+      expect(validator(args)).toBeNull();
+    });
+  },
+);
 
 describe('validateur workspace:reopen', () => {
   const validator = validators[IPC.workspace.reopen];

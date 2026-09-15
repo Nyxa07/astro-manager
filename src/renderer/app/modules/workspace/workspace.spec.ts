@@ -11,10 +11,11 @@ const beta: WorkspaceInfo = { id: 'b', name: 'beta', root: '/photos/beta' };
 const open = vi.fn<ElectronApi['workspace']['open']>();
 const reopen = vi.fn<ElectronApi['workspace']['reopen']>();
 const list = vi.fn<ElectronApi['workspace']['list']>();
+const current = vi.fn<ElectronApi['workspace']['current']>();
 
 const api = {
   version: { get: async () => '0' },
-  workspace: { open, reopen, list },
+  workspace: { open, reopen, list, current },
 } satisfies ElectronApi;
 
 describe('Workspace', () => {
@@ -22,6 +23,7 @@ describe('Workspace', () => {
     open.mockReset();
     reopen.mockReset();
     list.mockReset().mockResolvedValue([]);
+    current.mockReset().mockResolvedValue(null);
     TestBed.configureTestingModule({ providers: [{ provide: ELECTRON_API, useValue: api }] });
   });
 
@@ -32,6 +34,17 @@ describe('Workspace', () => {
 
     await vi.waitFor(() => expect(workspace.recent()).toEqual([alpha, beta]));
     expect(workspace.current()).toBeNull();
+  });
+
+  // Le process principal survit à un rechargement du renderer (DevTools,
+  // ng serve) : l'espace qu'il tient encore ouvert redevient le courant.
+  it("restaure l'espace que le process principal tient déjà ouvert", async () => {
+    current.mockResolvedValue(beta);
+
+    const workspace = TestBed.inject(Workspace);
+
+    await vi.waitFor(() => expect(workspace.current()).toEqual(beta));
+    expect(open).not.toHaveBeenCalled();
   });
 
   it('ouvre un espace et le rend courant', async () => {

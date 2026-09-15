@@ -8,7 +8,12 @@ const get = vi.fn<ElectronApi['version']['get']>();
 
 const api = {
   version: { get },
-  workspace: { open: async () => null, reopen: async () => null, list: async () => [] },
+  workspace: {
+    open: async () => null,
+    reopen: async () => null,
+    list: async () => [],
+    current: async () => null,
+  },
 } satisfies ElectronApi;
 
 /** L'injectable, sa resource chargée. */

@@ -1,5 +1,5 @@
 import { type dialog } from 'electron';
-import { IPC, type ChannelsOf } from '../../../shared/ipc';
+import { IPC, type IpcContract, type ChannelsOf } from '../../../shared/ipc';
 import { type WorkspaceInfo } from '../../../shared/modules/workspace';
 import type { Handler, IpcModule, Validator } from '../../module';
 import * as path from 'node:path';
@@ -13,13 +13,16 @@ export type WorkspaceDeps = {
 
 type WorkspaceIpc = typeof IPC.workspace;
 type WorkspaceChannel = ChannelsOf<WorkspaceIpc>;
+/** Les canaux du module dont le contrat ne prend aucun argument. */
+type NoArgChannel = {
+  [C in WorkspaceChannel]: IpcContract[C] extends () => unknown ? C : never;
+}[WorkspaceChannel];
 
 const REGISTRY_FILE = 'workspaces.json';
 
-const openValidator: Validator<WorkspaceIpc['open']> = (args) => (args.length === 0 ? [] : null);
+const noArgsValidator: Validator<NoArgChannel> = (args) => (args.length === 0 ? [] : null);
 const reopenValidator: Validator<WorkspaceIpc['reopen']> = (args) =>
   args.length === 1 && typeof args[0] === 'string' ? [args[0]] : null;
-const listValidator: Validator<WorkspaceIpc['list']> = (args) => (args.length === 0 ? [] : null);
 
 export const createWorkspaceModule = (deps: WorkspaceDeps) => {
   const registry = createRegistry(path.join(deps.userDataDir, REGISTRY_FILE));
@@ -52,16 +55,20 @@ export const createWorkspaceModule = (deps: WorkspaceDeps) => {
     return registry.list();
   };
 
+  const current: Handler<WorkspaceIpc['current']> = () => session.current();
+
   return {
     handlers: {
       [IPC.workspace.open]: open,
       [IPC.workspace.reopen]: reopen,
       [IPC.workspace.list]: list,
+      [IPC.workspace.current]: current,
     },
     validators: {
-      [IPC.workspace.open]: openValidator,
+      [IPC.workspace.open]: noArgsValidator,
       [IPC.workspace.reopen]: reopenValidator,
-      [IPC.workspace.list]: listValidator,
+      [IPC.workspace.list]: noArgsValidator,
+      [IPC.workspace.current]: noArgsValidator,
     },
   } satisfies IpcModule<WorkspaceChannel>;
 };

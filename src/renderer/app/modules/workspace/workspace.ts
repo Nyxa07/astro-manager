@@ -13,6 +13,7 @@ export class Workspace {
 
   constructor() {
     void this.refresh();
+    void this.refreshCurrent();
   }
 
   async open() {
@@ -36,5 +37,9 @@ export class Workspace {
 
   private async refresh() {
     this._recent.set((await this.api?.workspace.list()) ?? []);
+  }
+
+  private async refreshCurrent() {
+    this._current.set((await this.api?.workspace.current()) ?? null);
   }
 }
