@@ -7,6 +7,7 @@ const isUnknownArray = (v: unknown): v is unknown[] => Array.isArray(v);
 export type Registry = {
   list(): WorkspaceInfo[];
   remember(info: WorkspaceInfo): void;
+  forget(root: string): void;
 };
 
 const readRegistryFile = (file: string): WorkspaceInfo[] => {
@@ -40,5 +41,13 @@ export const createRegistry = (file: string): Registry => {
     writeRegistryFile(file, [info, ...others]);
   };
 
-  return { list, remember };
+  const forget = (root: string) => {
+    const currentReg = readRegistryFile(file);
+    const newReg = currentReg.filter((i) => i.root !== root);
+    if (newReg.length !== currentReg.length) {
+      writeRegistryFile(file, newReg);
+    }
+  };
+
+  return { list, remember, forget };
 };

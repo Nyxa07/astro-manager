@@ -1,7 +1,7 @@
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, expectTypeOf, it, vi } from 'vitest';
 import { IPC } from '../../../shared/ipc';
 import { createWorkspaceModule, type WorkspaceDeps } from './index';
 import { libraryFile } from './session';
@@ -179,6 +179,55 @@ describe('handler workspace:current', () => {
   });
 });
 
+describe('handler workspace:forget', () => {
+  it("retire l'espace du registre, et lui seul", async () => {
+    const a = workspaceDir('a');
+    const b = workspaceDir('b');
+    showOpenDialog.mockResolvedValueOnce(chosen(a)).mockResolvedValueOnce(chosen(b));
+    const m = module();
+    await m.handlers[IPC.workspace.open]();
+    const infoB = await m.handlers[IPC.workspace.open]();
+
+    m.handlers[IPC.workspace.forget](a);
+
+    expect(m.handlers[IPC.workspace.list]()).toEqual([infoB]);
+  });
+
+  it("n'efface rien dans l'espace lui-même", async () => {
+    // Oublier, c'est retirer une ligne du registre : le catalogue reste dans
+    // le dossier, l'espace se rouvrira par le sélecteur avec la même identité.
+    const a = workspaceDir('a');
+    showOpenDialog.mockResolvedValue(chosen(a));
+    const m = module();
+    const info = await m.handlers[IPC.workspace.open]();
+
+    m.handlers[IPC.workspace.forget](a);
+
+    expect(fs.existsSync(libraryFile(a))).toBe(true);
+    await expect(m.handlers[IPC.workspace.open]()).resolves.toEqual(info);
+  });
+
+  it("ne touche pas à l'espace courant", async () => {
+    // Le registre et la session sont deux étages : forget ne parle qu'au
+    // premier. Depuis l'interface le cas ne se présente pas — l'accueil n'est
+    // affiché que sans espace ouvert —, le contrat est fixé ici.
+    const root = workspaceDir();
+    showOpenDialog.mockResolvedValue(chosen(root));
+    const m = module();
+    const info = await m.handlers[IPC.workspace.open]();
+
+    m.handlers[IPC.workspace.forget](root);
+
+    expect(m.handlers[IPC.workspace.current]()).toEqual(info);
+  });
+
+  it('est sans effet pour une racine absente du registre', () => {
+    module().handlers[IPC.workspace.forget](workspaceDir('inconnu'));
+
+    expect(fs.existsSync(registryFile())).toBe(false);
+  });
+});
+
 // Les validateurs sont purs : un module jetable suffit à les atteindre.
 const validators = createWorkspaceModule({
   dialog: { showOpenDialog: async () => cancelled() },
@@ -207,8 +256,8 @@ describe.each([IPC.workspace.open, IPC.workspace.list, IPC.workspace.current])(
   },
 );
 
-describe('validateur workspace:reopen', () => {
-  const validator = validators[IPC.workspace.reopen];
+describe.each([IPC.workspace.reopen, IPC.workspace.forget])('validateur %s', (channel) => {
+  const validator = validators[channel];
 
   // Ici la chaîne est une clé du registre, pas un chemin à ouvrir : le
   // validateur vérifie la forme, le handler l'appartenance (voir plus haut).
@@ -223,5 +272,14 @@ describe('validateur workspace:reopen', () => {
     ['deux chemins', ['/photos/a', '/photos/b']],
   ])('refuse %s', (_label, args) => {
     expect(validator(args)).toBeNull();
+  });
+
+  // Le validateur est partagé, typé sur l'union calculée des canaux à racine.
+  // Calculée par `IpcContract[C] extends (root: string) => unknown`, l'union
+  // avalerait aussi les canaux sans argument — une fonction à zéro paramètre
+  // est assignable à une fonction qui en prend un — et ce retour admettrait
+  // le tuple vide. Comparer les tuples de paramètres l'interdit.
+  it('est typé sur les seuls canaux à racine : son retour ne peut pas être vide', () => {
+    expectTypeOf(validator).returns.toEqualTypeOf<[string] | null>();
   });
 });

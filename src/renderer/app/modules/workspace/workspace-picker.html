@@ -2,7 +2,7 @@
   Écran d'accueil : aucun espace n'est ouvert.
 
   Le gabarit attend du composant WorkspacePicker :
-    workspace  — l'injectable Workspace : recent(), open(), reopen(root)
+    workspace  — l'injectable Workspace : recent(), open(), reopen(root), forget(root)
     version    — l'injectable Version : versions, une resource ({ electron, node } | null)
 -->
 <section class="picker">
@@ -39,7 +39,8 @@
       </div>
       <ul class="recent-list">
         @for (entry of workspace.recent(); track entry.root) {
-          <li>
+          <!-- Deux boutons frères, pas imbriqués : la ligne rouvre, la croix oublie. -->
+          <li class="recent-row">
             <button type="button" class="recent" (click)="workspace.reopen(entry.root)">
               <span class="name">
                 {{ entry.name }}
@@ -48,6 +49,17 @@
                 }
               </span>
               <span class="root mono">{{ entry.root }}</span>
+            </button>
+            <button
+              type="button"
+              class="btn quiet forget"
+              title="Oublier"
+              [attr.aria-label]="`Oublier ${entry.name}`"
+              (click)="workspace.forget(entry.root)"
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M6 6l12 12M18 6 6 18" />
+              </svg>
             </button>
           </li>
         }

@@ -73,9 +73,20 @@
   border-top: 1px solid var(--line);
 }
 
-/* Toute la ligne est le bouton : une cible large, un seul focus. */
+/* La ligne rouvre, la croix oublie : deux cibles côte à côte, un survol commun. */
+.recent-row {
+  display: flex;
+  align-items: center;
+}
+
+.recent-row:hover {
+  background: var(--bg-3);
+}
+
+/* Le libellé prend toute la largeur restante : une cible large, un seul focus. */
 .recent {
-  width: 100%;
+  flex: 1;
+  min-width: 0;
   display: grid;
   gap: 2px;
   padding: 10px 14px;
@@ -84,12 +95,19 @@
   text-align: left;
 }
 
-.recent:hover {
-  background: var(--bg-3);
-}
-
 .recent:focus-visible {
   outline-offset: -2px;
+}
+
+/* Discrète au repos — oublier n'est pas l'action de la ligne —, lisible au survol. */
+.forget {
+  flex: none;
+  margin-inline-end: var(--space-2);
+  color: var(--text-3);
+}
+
+.forget:hover {
+  color: var(--text);
 }
 
 .recent .name {
@@ -105,7 +123,7 @@
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  .recent {
+  .recent-row {
     transition: background-color 120ms ease;
   }
 }

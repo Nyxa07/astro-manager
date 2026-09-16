@@ -12,10 +12,11 @@ const open = vi.fn<ElectronApi['workspace']['open']>();
 const reopen = vi.fn<ElectronApi['workspace']['reopen']>();
 const list = vi.fn<ElectronApi['workspace']['list']>();
 const current = vi.fn<ElectronApi['workspace']['current']>();
+const forget = vi.fn<ElectronApi['workspace']['forget']>();
 
 const api = {
   version: { get: async () => '0' },
-  workspace: { open, reopen, list, current },
+  workspace: { open, reopen, list, current, forget },
 } satisfies ElectronApi;
 
 describe('Workspace', () => {
@@ -24,6 +25,7 @@ describe('Workspace', () => {
     reopen.mockReset();
     list.mockReset().mockResolvedValue([]);
     current.mockReset().mockResolvedValue(null);
+    forget.mockReset().mockResolvedValue(undefined);
     TestBed.configureTestingModule({ providers: [{ provide: ELECTRON_API, useValue: api }] });
   });
 
@@ -100,6 +102,27 @@ describe('Workspace', () => {
     expect(workspace.current()).toBeNull();
   });
 
+  it('oublie un espace connu par sa racine', async () => {
+    const workspace = TestBed.inject(Workspace);
+
+    await workspace.forget(alpha.root);
+
+    expect(forget).toHaveBeenCalledExactlyOnceWith(alpha.root);
+  });
+
+  // Le canal ne rend rien : c'est `list` qui dit ce qu'il reste, et la liste
+  // doit être à jour quand forget() rend la main, comme après open().
+  it("rafraîchit la liste avant de rendre la main à l'appelant", async () => {
+    list.mockResolvedValue([alpha, beta]);
+    const workspace = TestBed.inject(Workspace);
+    await vi.waitFor(() => expect(workspace.recent()).toEqual([alpha, beta]));
+    list.mockImplementation(() => new Promise((resolve) => setTimeout(() => resolve([beta]))));
+
+    await workspace.forget(alpha.root);
+
+    expect(workspace.recent()).toEqual([beta]);
+  });
+
   describe('hors Electron', () => {
     beforeEach(() => {
       TestBed.overrideProvider(ELECTRON_API, { useValue: undefined });
@@ -110,10 +133,12 @@ describe('Workspace', () => {
 
       await workspace.open();
       await workspace.reopen(alpha.root);
+      await workspace.forget(alpha.root);
 
       expect(workspace.current()).toBeNull();
       expect(workspace.recent()).toEqual([]);
       expect(open).not.toHaveBeenCalled();
+      expect(forget).not.toHaveBeenCalled();
     });
   });
 });

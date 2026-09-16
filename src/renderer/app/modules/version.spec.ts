@@ -13,6 +13,7 @@ const api = {
     reopen: async () => null,
     list: async () => [],
     current: async () => null,
+    forget: async () => {},
   },
 } satisfies ElectronApi;
 

@@ -14,7 +14,8 @@ const workspace = {
   recent: signal<WorkspaceInfo[]>([]),
   open: vi.fn<Workspace['open']>(),
   reopen: vi.fn<Workspace['reopen']>(),
-} satisfies Pick<Workspace, 'current' | 'recent' | 'open' | 'reopen'>;
+  forget: vi.fn<Workspace['forget']>(),
+} satisfies Pick<Workspace, 'current' | 'recent' | 'open' | 'reopen' | 'forget'>;
 
 /** Le type de valeur de la resource, tel que Version le publie. */
 type Versions = ReturnType<Version['versions']['value']>;
@@ -41,6 +42,7 @@ describe('WorkspacePicker', () => {
     workspace.recent.set([]);
     workspace.open.mockReset();
     workspace.reopen.mockReset();
+    workspace.forget.mockReset();
     versions = null;
     await TestBed.configureTestingModule({
       imports: [WorkspacePicker],
@@ -105,6 +107,27 @@ describe('WorkspacePicker', () => {
       element(fixture).querySelectorAll<HTMLButtonElement>('.recent')[1].click();
 
       expect(workspace.reopen).toHaveBeenCalledExactlyOnceWith(beta.root);
+    });
+
+    it('oublie un espace par sa racine, sans le rouvrir', async () => {
+      workspace.recent.set([alpha, beta]);
+      const fixture = await mount();
+
+      element(fixture).querySelectorAll<HTMLButtonElement>('.forget')[1].click();
+
+      expect(workspace.forget).toHaveBeenCalledExactlyOnceWith(beta.root);
+      expect(workspace.reopen).not.toHaveBeenCalled();
+    });
+
+    it("nomme l'espace dans le libellé accessible de la croix", async () => {
+      // Le bouton n'a qu'une icône : sans ce libellé, un lecteur d'écran
+      // annoncerait « bouton » pour chaque ligne.
+      workspace.recent.set([alpha]);
+      const fixture = await mount();
+
+      const forget = element(fixture).querySelector<HTMLButtonElement>('.forget');
+
+      expect(forget?.getAttribute('aria-label')).toBe('Oublier alpha');
     });
   });
 });

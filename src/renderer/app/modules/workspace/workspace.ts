@@ -30,6 +30,11 @@ export class Workspace {
     }
   }
 
+  async forget(root: string) {
+    await this.api?.workspace.forget(root);
+    await this.refresh();
+  }
+
   private async opened(info: WorkspaceInfo) {
     this._current.set(info);
     await this.refresh();
