@@ -15,13 +15,16 @@ type WorkspaceIpc = typeof IPC.workspace;
 type WorkspaceChannel = ChannelsOf<WorkspaceIpc>;
 /** Les canaux du module dont le contrat ne prend aucun argument. */
 type NoArgChannel = {
-  [C in WorkspaceChannel]: IpcContract[C] extends () => unknown ? C : never;
+  [C in WorkspaceChannel]: Parameters<IpcContract[C]> extends [] ? C : never;
+}[WorkspaceChannel];
+type RootChannel = {
+  [C in WorkspaceChannel]: Parameters<IpcContract[C]> extends [string] ? C : never;
 }[WorkspaceChannel];
 
 const REGISTRY_FILE = 'workspaces.json';
 
 const noArgsValidator: Validator<NoArgChannel> = (args) => (args.length === 0 ? [] : null);
-const reopenValidator: Validator<WorkspaceIpc['reopen']> = (args) =>
+const rootArgsValidator: Validator<RootChannel> = (args) =>
   args.length === 1 && typeof args[0] === 'string' ? [args[0]] : null;
 
 export const createWorkspaceModule = (deps: WorkspaceDeps) => {
@@ -57,18 +60,22 @@ export const createWorkspaceModule = (deps: WorkspaceDeps) => {
 
   const current: Handler<WorkspaceIpc['current']> = () => session.current();
 
+  const forget: Handler<WorkspaceIpc['forget']> = (root: string) => registry.forget(root);
+
   return {
     handlers: {
       [IPC.workspace.open]: open,
       [IPC.workspace.reopen]: reopen,
       [IPC.workspace.list]: list,
       [IPC.workspace.current]: current,
+      [IPC.workspace.forget]: forget,
     },
     validators: {
       [IPC.workspace.open]: noArgsValidator,
-      [IPC.workspace.reopen]: reopenValidator,
+      [IPC.workspace.reopen]: rootArgsValidator,
       [IPC.workspace.list]: noArgsValidator,
       [IPC.workspace.current]: noArgsValidator,
+      [IPC.workspace.forget]: rootArgsValidator,
     },
   } satisfies IpcModule<WorkspaceChannel>;
 };

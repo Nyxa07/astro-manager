@@ -127,3 +127,40 @@ describe('remember', () => {
     expect(JSON.parse(raw())).toEqual([A, B]);
   });
 });
+
+describe('forget', () => {
+  it("retire l'entrée de cette racine, et elle seule", () => {
+    registry.remember(A);
+    registry.remember(B);
+    registry.forget(A.root);
+    expect(JSON.parse(raw())).toEqual([B]);
+  });
+
+  it('laisse un registre vide, sans supprimer le fichier', () => {
+    registry.remember(A);
+    registry.forget(A.root);
+    expect(JSON.parse(raw())).toEqual([]);
+  });
+
+  it('ne crée pas le fichier', () => {
+    registry.forget(A.root);
+    expect(fs.existsSync(file)).toBe(false);
+  });
+
+  // La racine vient du renderer et peut ne désigner personne : rien à retirer,
+  // rien à écrire — le fichier reste octet pour octet ce qu'il était.
+  it.each([
+    ['un fichier valide', JSON.stringify([A])],
+    ['un fichier corrompu', '{ pas du json'],
+  ])('ne touche pas à %s quand la racine est inconnue', (_label, content) => {
+    seed(content);
+    registry.forget(B.root);
+    expect(raw()).toBe(content);
+  });
+
+  it('écarte les entrées invalides au passage', () => {
+    seed(JSON.stringify([null, A, B]));
+    registry.forget(A.root);
+    expect(JSON.parse(raw())).toEqual([B]);
+  });
+});
