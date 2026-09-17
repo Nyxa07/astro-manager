@@ -4,9 +4,10 @@ import { type WorkspaceInfo } from '../../../shared/modules/workspace';
 import type { Handler, IpcModule, Validator } from '../../module';
 import * as path from 'node:path';
 import { createRegistry } from './registry';
-import { createSession } from './session';
+import type { Session } from '../../session';
 
 export type WorkspaceDeps = {
+  session: Pick<Session, 'current' | 'open'>;
   dialog: Pick<typeof dialog, 'showOpenDialog'>;
   userDataDir: string;
 };
@@ -29,7 +30,6 @@ const rootArgsValidator: Validator<RootChannel> = (args) =>
 
 export const createWorkspaceModule = (deps: WorkspaceDeps) => {
   const registry = createRegistry(path.join(deps.userDataDir, REGISTRY_FILE));
-  const session = createSession();
 
   const open: Handler<WorkspaceIpc['open']> = async () => {
     const { canceled, filePaths } = await deps.dialog.showOpenDialog({
@@ -38,7 +38,7 @@ export const createWorkspaceModule = (deps: WorkspaceDeps) => {
     if (canceled || filePaths.length === 0) {
       return null;
     }
-    const info = session.open(filePaths[0]);
+    const info = deps.session.open(filePaths[0]);
     registry.remember(info);
 
     return info;
@@ -49,7 +49,7 @@ export const createWorkspaceModule = (deps: WorkspaceDeps) => {
     if (!entry) {
       return null;
     }
-    const info = session.open(entry.root);
+    const info = deps.session.open(entry.root);
     registry.remember(info);
     return info;
   };
@@ -58,7 +58,7 @@ export const createWorkspaceModule = (deps: WorkspaceDeps) => {
     return registry.list();
   };
 
-  const current: Handler<WorkspaceIpc['current']> = () => session.current();
+  const current: Handler<WorkspaceIpc['current']> = () => deps.session.current()?.info ?? null;
 
   const forget: Handler<WorkspaceIpc['forget']> = (root: string) => registry.forget(root);
 
