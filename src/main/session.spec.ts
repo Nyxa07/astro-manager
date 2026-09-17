@@ -2,9 +2,9 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { APPLICATION_ID } from '../../database';
-import { createSession, libraryFile, type Session } from './session';
+import { afterEach, beforeEach, describe, expect, expectTypeOf, it, vi } from 'vitest';
+import { APPLICATION_ID } from './database';
+import { createSession, libraryFile, type OpenWorkspace, type Session } from './session';
 
 // Aucun mock : la session s'exerce sur de vrais dossiers temporaires et de
 // vraies bases SQLite, comme database.spec.ts. Seul `close` est espionné,
@@ -103,7 +103,7 @@ describe('open', () => {
   it("rend en current() ce qu'open a rendu", () => {
     const s = session();
     const info = s.open(workspaceDir());
-    expect(s.current()).toEqual(info);
+    expect(s.current()?.info).toEqual(info);
   });
 
   it("retrouve, sans la réécrire, l'identité d'un espace déjà ouvert", () => {
@@ -140,7 +140,7 @@ describe('open', () => {
     const b = s.open(workspaceDir('b'));
 
     expect(close).toHaveBeenCalledOnce();
-    expect(s.current()).toEqual(b);
+    expect(s.current()?.info).toEqual(b);
   });
 
   it("garde l'espace courant quand le nouveau est refusé", () => {
@@ -155,7 +155,38 @@ describe('open', () => {
     // La seule fermeture est celle du fichier refusé, par openDatabase : la
     // session n'a pas touché à la connexion de A avant de savoir si B s'ouvrait.
     expect(close).toHaveBeenCalledOnce();
-    expect(s.current()).toEqual(a);
+    expect(s.current()?.info).toEqual(a);
+  });
+});
+
+describe('current', () => {
+  // La raison d'être de la session partagée : un module lit et écrit dans le
+  // catalogue courant par cette connexion. Ce doit être l'instance elle-même,
+  // pas ses méthodes recopiées — détachées de leur DatabaseSync, `prepare` et
+  // `exec` lèvent « Illegal invocation », et le typage ne le voit pas.
+  it("expose la connexion de l'espace ouvert, prête à lire", () => {
+    const s = session();
+    const info = s.open(workspaceDir());
+
+    expect(s.current()?.db.prepare('SELECT id FROM workspace').get()).toEqual({ id: info.id });
+  });
+
+  it('laisse écrire dans le catalogue par cette connexion', () => {
+    const root = workspaceDir();
+    const s = session();
+    s.open(root);
+
+    s.current()?.db.exec("UPDATE workspace SET name = 'Renommé'");
+
+    expect(workspaceRows(root)[0]).toMatchObject({ name: 'Renommé' });
+  });
+
+  it("n'expose pas de quoi fermer : seule la session ferme", () => {
+    // Le rétrécissement est un fait de type : l'objet rendu est le vrai
+    // DatabaseSync, on n'en montre que deux méthodes.
+    expectTypeOf<OpenWorkspace['db']>().toHaveProperty('prepare');
+    expectTypeOf<OpenWorkspace['db']>().toHaveProperty('exec');
+    expectTypeOf<OpenWorkspace['db']>().not.toHaveProperty('close');
   });
 });
 

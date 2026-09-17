@@ -7,6 +7,7 @@ import type { VersionKey } from '../shared/modules/version';
 import type { WorkspaceInfo } from '../shared/modules/workspace';
 import { registerIpcHandlers, type IpcDeps } from './ipc';
 import { versionModule } from './modules/version';
+import { createSession } from './session';
 
 // ipc.ts importe `ipcMain` : on remplace le module electron, indisponible
 // hors de l'application.
@@ -14,13 +15,20 @@ const handle = vi.fn();
 vi.mock('electron', () => ({ ipcMain: { handle: (...args: unknown[]) => handle(...args) } }));
 
 // Les dépendances réelles sont construites par main/index.ts ; ici des
-// fausses. Le sélecteur n'est jamais appelé dans ce spec, et le userData ne
-// reçoit rien tant qu'aucun espace n'est ouvert.
+// fausses, et une vraie session que rien n'ouvre. Le sélecteur n'est jamais
+// appelé dans ce spec, et le userData ne reçoit rien tant qu'aucun espace
+// n'est ouvert. La session est gardée à part : les deps n'en exposent pas
+// `close`, la spec si.
+const session = createSession();
 const DEPS: IpcDeps = {
   dialog: { showOpenDialog: async () => ({ canceled: true, filePaths: [] }) },
   userDataDir: fs.mkdtempSync(path.join(os.tmpdir(), 'astro-manager-ipc-')),
+  session,
 };
-afterAll(() => fs.rmSync(DEPS.userDataDir, { recursive: true, force: true }));
+afterAll(() => {
+  session.close();
+  fs.rmSync(DEPS.userDataDir, { recursive: true, force: true });
+});
 
 // Espions posés avant registerIpcHandlers : la composition copie les modules
 // par spread à chaque appel, elle emporte donc les espions. Ils enveloppent

@@ -3,6 +3,7 @@ import * as path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { registerIpcHandlers } from './ipc';
 import { resolveRendererFile } from './renderer-files';
+import { createSession } from './session';
 
 // `npm run dev` lance Electron avec --dev : on charge le serveur d'ng serve.
 // Sinon on sert le build Angular via le protocole app://.
@@ -99,7 +100,8 @@ app.whenReady().then(() => {
     }
   });
 
-  registerIpcHandlers({ dialog, userDataDir: app.getPath('userData') });
+  const session = createSession();
+  registerIpcHandlers({ session, dialog, userDataDir: app.getPath('userData') });
 });
 
 app.on('window-all-closed', () => {

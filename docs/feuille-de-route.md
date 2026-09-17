@@ -9,6 +9,7 @@ L'application vise la gestion d'une bibliothèque de photo astronomique : rangem
 - **Socle** — trois frontières, contrat IPC dérivé d'`IPC`, preload générique, protocole `app://`, verrou de navigation, `database.ts` (migrations sous `PRAGMA user_version`, `application_id` `ASTM`), deux suites de specs.
 - **`version`** — `version:get`. Module d'exemple, affiché sur l'accueil.
 - **`workspace`** — `workspace:open`, `reopen`, `list`, `current`, `forget`. Registre JSON des espaces connus dans `userData` ; identité de l'espace (id, nom) dans `<racine>/.astro-manager/library.db`, table `workspace`, schéma v1 ; session courante côté main. Côté renderer : injectable `Workspace`, écran d'accueil (sélecteur, espaces récents, oubli d'un récent).
+- **Session** — `src/main/session.ts`, contexte de la bibliothèque ouverte : `current()` rend `OpenWorkspace = { info, db }`, `db` restreint à `prepare | exec`. Construite dans `index.ts`, injectée aux fabriques ; `workspace` seul l'ouvre. Voir `architecture.md`, « La session ».
 - **Renderer** — jetons et trois thèmes, socle et briques CSS, pont par injection (`ELECTRON_API`), `App` aiguillé sur `workspace.current()`. La coquille n'existe qu'en maquette.
 
 ## Prochaine étape — `picture`
@@ -19,8 +20,8 @@ Le cœur du logiciel et le premier module qui dépend d'un autre. Conçu le 17 s
 
 **Les quatre PR.**
 
-1. **Session injectée** — `Session` construite dans `index.ts`, passée à `registerIpcHandlers` puis aux fabriques ; `current()` rend `{ info, db }`. Refactor pur ; `architecture.md` suit.
-2. **`picture` main + shared** — migration v2 (table `picture`) ; `walk` (générateur asynchrone, événements `added | changed | removed`), `store`, une transaction ; `picture:scan` → résumé, `picture:list` ; `null` = aucun espace ouvert. Injectable `Picture` (`all`, `scan()`, `scanning`, `selected`), sans écran.
+1. **Session injectée** — _livrée le 17 septembre 2026_. `Session` promue à la racine de main, construite dans `index.ts`, passée à `registerIpcHandlers` puis aux fabriques ; `current()` rend `OpenWorkspace = { info, db }`. Refactor pur ; `architecture.md` à jour.
+2. **`picture` main + shared** — `session: Pick<Session, 'current'>` dans les deps ; migration v2 (table `picture`) ; `walk` (générateur asynchrone, événements `added | changed | removed`), `store`, une transaction synchrone — sans `await` à l'intérieur ; `picture:scan` → résumé, `picture:list` ; `null` = aucun espace ouvert. Injectable `Picture` (`all`, `scan()`, `scanning`, `selected`), sans écran.
 3. **`workspace://` et vignettes** — deux hôtes, `file/<chemin relatif>` et `thumb/<id>` ; résolution pure, réponse en flux, privilèges `standard` + `stream`, CSP `img-src`. Vignettes `.astro-manager/thumbs/<id>.jpg` (360 × 240) générées sur défaut de cache : FITS par un lecteur maison (en-tête, lectures échantillonnées, étirement par percentiles, superpixel si `BAYERPAT`), JPEG/PNG par `nativeImage`, RAW/TIFF en tuile de remplacement ; échec mémorisé pour la session, orphelines purgées au balayage. Seconde arête du module ; `architecture.md` suit.
 4. **Coquille et grille** — `app/shell/` (barre supérieure, rail réduit aux écrans existants, `<router-outlet>`, inspecteur, barre d'état), routes internes `'' → picture`, grille virtualisée **par rangées** (`@angular/cdk`, colonnes dérivées d'un `ResizeObserver`), inspecteur minimal (nom, chemin, sorte, taille, date), « Balayer » dans l'entête de l'écran ; `interface.md` suit.
 
@@ -47,6 +48,7 @@ Ordre indicatif, révisable.
 - **Aucune sémantique de dossier, aucun classement demandé à l'utilisateur.** Le rattachement (type de pose, objet, nuit) se lit dans les en-têtes FITS, au catalogue.
 - **L'accueil est un état, pas une URL** ; le routeur ne sert qu'à l'intérieur de l'espace.
 - **CSS natif, trois thèmes, Plex auto-hébergé** — voir `interface.md`.
+- **La session est le contexte de l'application, pas un détail de `workspace`.** Promue à la racine de main comme `database.ts` ; qui écrit se lit dans le `Pick` des deps ; la connexion exposée est le contrat, encadré par quatre règles — voir `architecture.md`, « La session ».
 - **Pas d'outillage de mémoire externe.** graft essayé et retiré, claude-mem écarté : la mémoire du projet, c'est `docs/` et `git log`.
 
 ## Questions ouvertes
@@ -63,7 +65,7 @@ Ordre indicatif, révisable.
 
 Ce que Nyxa a déjà manipulé — l'agent ne le réexplique pas sans demande — et ce qu'il veut rencontrer. L'agent y pioche quand le code s'y prête, sans forcer.
 
-**Acquis** : mapped types et `ChannelsOf` ; annotation sur la variable vs `satisfies` ; variance et validateur partagé (`NoArgChannel`) ; `Handler<C>` comme couture ; `InjectionToken` vs classe injectable ; signaux et `asReadonly()` ; `resource` ; deux étages de specs ; cycles d'injection vs cycles d'import.
+**Acquis** : mapped types et `ChannelsOf` ; annotation sur la variable vs `satisfies` ; variance et validateur partagé (`NoArgChannel`) ; `Handler<C>` comme couture ; `InjectionToken` vs classe injectable ; signaux et `asReadonly()` ; `resource` ; deux étages de specs ; cycles d'injection vs cycles d'import ; `Pick` comme rétrécissement de type sur l'objet réel, et pourquoi recopier une méthode native la détache de `this`.
 
 **À rencontrer** :
 

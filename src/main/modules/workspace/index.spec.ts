@@ -3,13 +3,15 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, expectTypeOf, it, vi } from 'vitest';
 import { IPC } from '../../../shared/ipc';
+import { createSession, libraryFile, type Session } from '../../session';
 import { createWorkspaceModule, type WorkspaceDeps } from './index';
-import { libraryFile } from './session';
 
 // L'arête ne touche pas à `electron` : `dialog` lui est injecté, un faux
 // suffit — et ce spec n'a pas de vi.mock. Tout le reste (session, registre,
 // catalogue) est réel, sur un dossier temporaire : l'arête est testée par ses
-// effets, pas par la liste de ses appels.
+// effets, pas par la liste de ses appels. La session est construite ici et
+// passée au module, comme main/index.ts le fait : c'est l'instance partagée
+// avec les modules à venir, et la spec y regarde de l'extérieur.
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 
@@ -19,10 +21,11 @@ const cancelled = (): DialogResult => ({ canceled: true, filePaths: [] });
 
 let dir: string;
 let userDataDir: string;
+let session: Session;
 let showOpenDialog: ReturnType<typeof vi.fn<() => Promise<DialogResult>>>;
 
-/** Le module branché sur le faux sélecteur et le userData temporaire. */
-const module = () => createWorkspaceModule({ dialog: { showOpenDialog }, userDataDir });
+/** Le module branché sur le faux sélecteur, le userData temporaire et la session partagée. */
+const module = () => createWorkspaceModule({ dialog: { showOpenDialog }, userDataDir, session });
 
 /** Un dossier d'espace de travail vierge, nommé pour contrôler `basename`. */
 const workspaceDir = (name = 'espace'): string => {
@@ -39,10 +42,12 @@ beforeEach(() => {
   dir = fs.mkdtempSync(path.join(os.tmpdir(), 'astro-manager-workspace-'));
   userDataDir = path.join(dir, 'userData');
   fs.mkdirSync(userDataDir);
+  session = createSession();
   showOpenDialog = vi.fn<() => Promise<DialogResult>>();
 });
 
 afterEach(() => {
+  session.close();
   fs.rmSync(dir, { recursive: true, force: true });
 });
 
@@ -179,6 +184,43 @@ describe('handler workspace:current', () => {
   });
 });
 
+describe('session injectée', () => {
+  // La session est construite au-dessus des modules et partagée entre eux :
+  // ce que workspace ouvre, picture le lira par la même instance. Le module
+  // doit donc agir sur celle qu'on lui donne, jamais sur une sienne.
+  it("rend en current ce qu'un autre a ouvert dans la session", () => {
+    const info = session.open(workspaceDir());
+
+    expect(module().handlers[IPC.workspace.current]()).toEqual(info);
+  });
+
+  it('ouvre dans la session partagée, pas dans une session privée', async () => {
+    showOpenDialog.mockResolvedValueOnce(chosen(workspaceDir()));
+
+    const info = await module().handlers[IPC.workspace.open]();
+
+    expect(session.current()?.info).toEqual(info);
+  });
+
+  it("rend l'identité seule : la connexion ne traverse pas le pont", async () => {
+    // Le type de fil (`WorkspaceInfo | null`) refuse déjà `{ info, db }` à la
+    // compilation ; ceci fixe la même chose à l'exécution.
+    showOpenDialog.mockResolvedValueOnce(chosen(workspaceDir()));
+    const m = module();
+    await m.handlers[IPC.workspace.open]();
+
+    expect(m.handlers[IPC.workspace.current]()).not.toHaveProperty('db');
+  });
+
+  it("ne reçoit pas de quoi fermer : l'arête ouvre et lit, elle ne ferme pas", () => {
+    // Typée au plus étroit, comme `dialog` : la session entière a `close`,
+    // le module n'en voit que ce qu'il utilise.
+    expectTypeOf<WorkspaceDeps['session']>().toHaveProperty('open');
+    expectTypeOf<WorkspaceDeps['session']>().toHaveProperty('current');
+    expectTypeOf<WorkspaceDeps['session']>().not.toHaveProperty('close');
+  });
+});
+
 describe('handler workspace:forget', () => {
   it("retire l'espace du registre, et lui seul", async () => {
     const a = workspaceDir('a');
@@ -232,6 +274,7 @@ describe('handler workspace:forget', () => {
 const validators = createWorkspaceModule({
   dialog: { showOpenDialog: async () => cancelled() },
   userDataDir: '',
+  session: createSession(),
 }).validators;
 
 describe.each([IPC.workspace.open, IPC.workspace.list, IPC.workspace.current])(

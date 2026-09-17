@@ -1,14 +1,22 @@
 import type { DatabaseSync } from 'node:sqlite';
-import type { WorkspaceInfo } from '../../../shared/modules/workspace';
+import type { WorkspaceInfo } from '../shared/modules/workspace';
 import * as path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import * as fs from 'node:fs';
-import { openDatabase } from '../../database';
+import { openDatabase } from './database';
 
-type Workspace = { info: WorkspaceInfo; db: DatabaseSync };
+type Library = {
+  readonly db: DatabaseSync;
+  readonly info: WorkspaceInfo;
+};
+
+export type OpenWorkspace = {
+  readonly db: Pick<DatabaseSync, 'prepare' | 'exec'>;
+  readonly info: WorkspaceInfo;
+};
 
 export type Session = {
-  current(): WorkspaceInfo | null;
+  current(): OpenWorkspace | null;
   open(root: string): WorkspaceInfo;
   close(): void;
 };
@@ -33,7 +41,7 @@ const identify = (db: DatabaseSync, root: string): WorkspaceInfo => {
   return info;
 };
 
-const openWorkspace = (root: string): Workspace => {
+const openLibrary = (root: string): Library => {
   const file = libraryFile(root);
   const dir = path.dirname(file);
   if (!fs.existsSync(dir)) {
@@ -49,23 +57,21 @@ const openWorkspace = (root: string): Workspace => {
 };
 
 export const createSession = (): Session => {
-  let workspace: Workspace | null = null;
+  let library: Library | null = null;
 
   const open = (root: string): WorkspaceInfo => {
-    const next = openWorkspace(root);
+    const next = openLibrary(root);
     close();
-    workspace = next;
-    return workspace.info;
+    library = next;
+    return library.info;
   };
 
   const close = () => {
-    workspace?.db.close();
-    workspace = null;
+    library?.db.close();
+    library = null;
   };
 
-  const current = (): WorkspaceInfo | null => {
-    return workspace?.info ?? null;
-  };
+  const current = (): OpenWorkspace | null => library;
 
   return { open, close, current };
 };
