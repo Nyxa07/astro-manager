@@ -1,7 +1,7 @@
 import { type dialog } from 'electron';
 import { IPC, type IpcContract, type ChannelsOf } from '../../../shared/ipc';
 import { type WorkspaceInfo } from '../../../shared/modules/workspace';
-import type { Handler, IpcModule, Validator } from '../../module';
+import { noArgsValidator, type Handler, type IpcModule, type Validator } from '../../module';
 import * as path from 'node:path';
 import { createRegistry } from './registry';
 import type { Session } from '../../session';
@@ -14,17 +14,12 @@ export type WorkspaceDeps = {
 
 type WorkspaceIpc = typeof IPC.workspace;
 type WorkspaceChannel = ChannelsOf<WorkspaceIpc>;
-/** Les canaux du module dont le contrat ne prend aucun argument. */
-type NoArgChannel = {
-  [C in WorkspaceChannel]: Parameters<IpcContract[C]> extends [] ? C : never;
-}[WorkspaceChannel];
 type RootChannel = {
   [C in WorkspaceChannel]: Parameters<IpcContract[C]> extends [string] ? C : never;
 }[WorkspaceChannel];
 
 const REGISTRY_FILE = 'workspaces.json';
 
-const noArgsValidator: Validator<NoArgChannel> = (args) => (args.length === 0 ? [] : null);
 const rootArgsValidator: Validator<RootChannel> = (args) =>
   args.length === 1 && typeof args[0] === 'string' ? [args[0]] : null;
 
