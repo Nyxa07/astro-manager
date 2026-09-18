@@ -1,4 +1,3 @@
-export type PictureKind = 'fits' | 'raw' | 'tiff' | 'jpeg' | 'png';
 export type PictureInfo = {
   id: number;
   path: string;
@@ -11,3 +10,8 @@ export type ScanSummary = {
   removed: number;
   changed: number;
 };
+export const PICTURE_KINDS = ['fits', 'raw', 'tiff', 'jpeg', 'png'] as const;
+export type PictureKind = (typeof PICTURE_KINDS)[number];
+
+export const isPictureKind = (v: unknown): v is PictureKind =>
+  typeof v === 'string' && (PICTURE_KINDS as readonly string[]).includes(v);

@@ -17,6 +17,19 @@ export const MIGRATIONS: readonly Migration[] = [
     PRAGMA application_id = ${APPLICATION_ID};
   `,
   },
+  {
+    version: 2,
+    sql: `
+    CREATE TABLE picture (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      path TEXT UNIQUE NOT NULL,
+      kind TEXT NOT NULL,
+      size INTEGER NOT NULL,
+      mtime INTEGER NOT NULL,
+      created_at INTEGER NOT NULL
+    ) STRICT;
+  `,
+  },
 ];
 
 export const migrate = (db: DatabaseSync, migrations = MIGRATIONS): void => {

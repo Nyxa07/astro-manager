@@ -1,7 +1,7 @@
-import { type ChannelsOf, IPC, IpcContract } from '../../../shared/ipc';
-import type { PictureInfo, ScanSummary } from '../../../shared/modules/picture';
+import { type ChannelsOf, IPC } from '../../../shared/ipc';
 import { type Handler, type IpcModule, noArgsValidator } from '../../module';
 import type { Session } from '../../session';
+import { createPictureStore } from './store';
 
 export type PictureDeps = {
   session: Pick<Session, 'current'>;
@@ -11,12 +11,18 @@ type PictureIpc = typeof IPC.picture;
 type PictureChannel = ChannelsOf<PictureIpc>;
 
 export const createPictureModule = (deps: PictureDeps) => {
+  const store = createPictureStore();
+
   const scan: Handler<PictureIpc['scan']> = async () => {
     return null;
   };
 
   const list: Handler<PictureIpc['list']> = () => {
-    return null;
+    const session = deps.session.current();
+    if (!session) {
+      return null;
+    }
+    return store.list(session.db);
   };
 
   return {
