@@ -1,8 +1,6 @@
 import type { DatabaseSync, SQLOutputValue } from 'node:sqlite';
 import { isPictureKind, type PictureInfo } from '../../../shared/modules/picture';
 
-type PictureStore = { list(db: Pick<DatabaseSync, 'prepare'>): PictureInfo[] };
-
 const toPictureInfo = (record: Record<string, SQLOutputValue>): PictureInfo => {
   if (typeof record['id'] !== 'number') throw new Error('Colonne id : entier attendu');
   if (typeof record['path'] !== 'string') throw new Error('Colonne path : string attendu');
@@ -19,13 +17,9 @@ const toPictureInfo = (record: Record<string, SQLOutputValue>): PictureInfo => {
   };
 };
 
-export const createPictureStore = (): PictureStore => {
-  const list = (db: Pick<DatabaseSync, 'prepare'>): PictureInfo[] => {
-    const rows = db
-      .prepare('SELECT id, path, kind, size, mtime FROM picture ORDER BY path ASC')
-      .all();
-    return rows.map(toPictureInfo);
-  };
-
-  return { list };
+export const list = (db: Pick<DatabaseSync, 'prepare'>): PictureInfo[] => {
+  const rows = db
+    .prepare('SELECT id, path, kind, size, mtime FROM picture ORDER BY path ASC')
+    .all();
+  return rows.map(toPictureInfo);
 };

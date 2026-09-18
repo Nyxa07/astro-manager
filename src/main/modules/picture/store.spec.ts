@@ -1,14 +1,13 @@
 import type { DatabaseSync } from 'node:sqlite';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { openDatabase } from '../../database';
-import { createPictureStore } from './store';
+import * as store from './store';
 
 // Le store est le collaborateur base du module, comme registry.ts pour
 // workspace : il s'exerce sur un vrai catalogue en mémoire, migré par
 // openDatabase, et c'est ici qu'est testée la frontière ligne → PictureInfo.
 
 let db: DatabaseSync;
-const store = createPictureStore();
 
 /** Une ligne écrite hors du store, comme le balayage la laissera. */
 const insert = (path: string, kind = 'fits', mtime = 1_700_000_000_000) =>
