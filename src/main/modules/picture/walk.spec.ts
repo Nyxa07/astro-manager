@@ -18,10 +18,13 @@ type Disk = Record<string, FakeFile | 'symlink'>;
 const errno = (code: string, what: string) =>
   Object.assign(new Error(`${code}: ${what}`), { code });
 
-/** Un `fs` réduit aux deux fonctions que walk appelle, sur un disque déclaré. */
-const fakeFs = (disk: Disk): WalkDeps['fs'] => ({
+/**
+ * Un `fs` réduit aux deux fonctions que walk appelle, sur un disque déclaré en
+ * chemins `/` ; la plateforme (`p`, `root`) décide de ce que walk lui demande.
+ */
+const fakeFs = (disk: Disk, p: WalkDeps['path'] = path, root = ROOT): WalkDeps['fs'] => ({
   readdir: async (dir) => {
-    const rel = path.relative(ROOT, dir);
+    const rel = p.relative(root, dir).split(p.sep).join('/');
     const prefix = rel ? `${rel}/` : '';
     const entries = new Map<string, Awaited<ReturnType<WalkDeps['fs']['readdir']>>[number]>();
     for (const key of Object.keys(disk)) {
@@ -36,7 +39,7 @@ const fakeFs = (disk: Disk): WalkDeps['fs'] => ({
     return [...entries.values()];
   },
   stat: async (file) => {
-    const key = path.relative(ROOT, file).split(path.sep).join('/');
+    const key = p.relative(root, file).split(p.sep).join('/');
     const f = disk[key];
     if (!f) throw errno('ENOENT', key);
     // stat suit les liens : un lien qu'on lui donne répond comme sa cible.
@@ -57,7 +60,7 @@ const collect = async <T>(iterable: AsyncIterable<T>): Promise<T[]> => {
 };
 
 const scan = (disk: Disk, k: KnownMap = new Map()): Promise<ScanEvent[]> =>
-  collect(createWalk({ fs: fakeFs(disk) }).walk(ROOT, k));
+  collect(createWalk({ fs: fakeFs(disk), path }).walk(ROOT, k));
 
 const added = (p: string, kind: string, size = 1024, mtime = T): ScanEvent =>
   ({ type: 'added', path: p, kind, size, mtime }) as ScanEvent;
@@ -204,10 +207,42 @@ describe('walk', () => {
   it("ne lit rien tant qu'il n'est pas itéré", async () => {
     const fs = fakeFs({ 'M31/light_001.fits': { size: 1024, mtime: T } });
     const readdir = vi.fn(fs.readdir);
-    const generator = createWalk({ fs: { ...fs, readdir } }).walk(ROOT, new Map());
+    const generator = createWalk({ fs: { ...fs, readdir }, path }).walk(ROOT, new Map());
 
     expect(readdir).not.toHaveBeenCalled();
     await generator.next();
     expect(readdir).toHaveBeenCalled();
+  });
+
+  describe('sous Windows', () => {
+    // `path.win32` depuis Linux : le chemin stocké est en `/` quel que soit le
+    // séparateur de la plateforme, sinon un espace balayé sous Windows ne se
+    // reconnaîtrait plus une fois ouvert sous Linux. Sur cette machine
+    // `path.sep` vaut déjà `/`, seul ce cas garde la conversion.
+    const root = 'C:\\photos';
+    const win = (disk: Disk, k: KnownMap = new Map()) =>
+      collect(createWalk({ fs: fakeFs(disk, path.win32, root), path: path.win32 }).walk(root, k));
+
+    it('rend des chemins relatifs en /, jamais en \\', async () => {
+      const events = await win({ 'M31/2026-09-18/light_001.fits': { size: 1024, mtime: T } });
+
+      expect(events).toEqual([
+        {
+          type: 'added',
+          path: 'M31/2026-09-18/light_001.fits',
+          kind: 'fits',
+          size: 1024,
+          mtime: T,
+        },
+      ]);
+    });
+
+    it('reconnaît un cliché connu par son chemin en /', async () => {
+      const disk: Disk = { 'M31/light_001.fits': { size: 1024, mtime: T } };
+
+      await expect(
+        win(disk, known({ 'M31/light_001.fits': { id: 1, size: 1024, mtime: T } })),
+      ).resolves.toEqual([]);
+    });
   });
 });

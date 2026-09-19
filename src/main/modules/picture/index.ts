@@ -1,3 +1,4 @@
+import * as path from 'node:path';
 import { type ChannelsOf, IPC } from '../../../shared/ipc';
 import { type Handler, type IpcModule, noArgsValidator } from '../../module';
 import type { Session } from '../../session';
@@ -13,7 +14,7 @@ type PictureIpc = typeof IPC.picture;
 type PictureChannel = ChannelsOf<PictureIpc>;
 
 export const createPictureModule = (deps: PictureDeps) => {
-  const { walk } = createWalk({ fs: deps.fs });
+  const { walk } = createWalk({ fs: deps.fs, path });
 
   const scan: Handler<PictureIpc['scan']> = async () => {
     const openWorkspace = deps.session.current();
