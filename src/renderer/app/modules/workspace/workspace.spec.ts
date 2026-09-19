@@ -17,6 +17,7 @@ const forget = vi.fn<ElectronApi['workspace']['forget']>();
 const api = {
   version: { get: async () => '0' },
   workspace: { open, reopen, list, current, forget },
+  picture: { scan: async () => null, list: async () => null },
 } satisfies ElectronApi;
 
 describe('Workspace', () => {
