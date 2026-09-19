@@ -49,6 +49,74 @@ describe('MIGRATIONS', () => {
     migrate(db);
     expect(tables(db)).toContain('workspace');
   });
+
+  it('crée la table picture', () => {
+    const db = new DatabaseSync(':memory:');
+    migrate(db);
+    expect(tables(db)).toContain('picture');
+  });
+
+  it('amène une base v1 à jour sans perdre son espace', () => {
+    // Le cas réel de la première migration livrée après coup : un catalogue
+    // créé avant `picture` doit gagner la table et garder son identité.
+    const db = new DatabaseSync(':memory:');
+    migrate(db, MIGRATIONS.slice(0, 1));
+    db.prepare('INSERT INTO workspace (id, name, created_at) VALUES (?, ?, ?)').run(
+      'w1',
+      'Ciel profond',
+      1_700_000_000_000,
+    );
+
+    migrate(db);
+
+    expect(userVersion(db)).toBe(MIGRATIONS.at(-1)?.version);
+    expect(tables(db)).toContain('picture');
+    expect(db.prepare('SELECT name FROM workspace').all()).toEqual([{ name: 'Ciel profond' }]);
+  });
+});
+
+describe('table picture', () => {
+  let db: DatabaseSync;
+  const insert = (path: string, mtime = 1_700_000_000_000) =>
+    db
+      .prepare('INSERT INTO picture (path, kind, size, mtime, created_at) VALUES (?, ?, ?, ?, ?)')
+      .run(path, 'fits', 1024, mtime, 1_700_000_000_000);
+  const ids = () =>
+    db
+      .prepare('SELECT id FROM picture ORDER BY id')
+      .all()
+      .map((row) => row['id']);
+
+  beforeEach(() => {
+    db = new DatabaseSync(':memory:');
+    migrate(db);
+  });
+
+  it("n'attribue jamais deux fois le même id", () => {
+    // Sans AUTOINCREMENT, SQLite réutilise le plus grand rowid libéré : un
+    // fichier ajouté après un retrait hériterait de l'id — et de la vignette
+    // thumbs/<id>.jpg — du disparu.
+    insert('M31/light_001.fits');
+    insert('M31/light_002.fits');
+    db.prepare('DELETE FROM picture WHERE id = 2').run();
+
+    insert('M42/light_001.fits');
+
+    expect(ids()).toEqual([1, 3]);
+  });
+
+  it('refuse deux lignes pour le même chemin', () => {
+    // Une ligne = un fichier : le chemin est la clé du balayage.
+    insert('M31/light_001.fits');
+    expect(() => insert('M31/light_001.fits')).toThrow(/UNIQUE/);
+  });
+
+  it('refuse un mtime fractionnaire', () => {
+    // `stats.mtimeMs` est fractionnaire sous Linux ; STRICT le rejette dans
+    // une colonne INTEGER au lieu de l'arrondir en silence. C'est au balayage
+    // d'émettre un entier (`stats.mtime.getTime()`).
+    expect(() => insert('M31/light_001.fits', 1_700_000_000_000.4)).toThrow(/REAL/);
+  });
 });
 
 describe('migrate', () => {

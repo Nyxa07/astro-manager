@@ -15,6 +15,7 @@ const api = {
     current: async () => null,
     forget: async () => {},
   },
+  picture: { scan: async () => null, list: async () => null },
 } satisfies ElectronApi;
 
 /** L'injectable, sa resource chargée. */

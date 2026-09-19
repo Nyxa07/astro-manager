@@ -1,3 +1,4 @@
+import type { PictureInfo, ScanSummary } from './modules/picture';
 import type { VersionKey } from './modules/version';
 import type { WorkspaceInfo } from './modules/workspace';
 
@@ -14,6 +15,10 @@ export const IPC = {
     current: 'workspace:current',
     forget: 'workspace:forget',
   },
+  picture: {
+    scan: 'picture:scan',
+    list: 'picture:list',
+  },
 } as const;
 
 export interface IpcContract {
@@ -23,6 +28,8 @@ export interface IpcContract {
   [IPC.workspace.list]: () => WorkspaceInfo[];
   [IPC.workspace.current]: () => WorkspaceInfo | null;
   [IPC.workspace.forget]: (root: string) => void;
+  [IPC.picture.scan]: () => Promise<ScanSummary | null>;
+  [IPC.picture.list]: () => PictureInfo[] | null;
 }
 
 export type IpcChannel = keyof IpcContract;

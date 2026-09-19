@@ -9,8 +9,9 @@ L'application vise la gestion d'une bibliothèque de photo astronomique : rangem
 - **Socle** — trois frontières, contrat IPC dérivé d'`IPC`, preload générique, protocole `app://`, verrou de navigation, `database.ts` (migrations sous `PRAGMA user_version`, `application_id` `ASTM`), deux suites de specs.
 - **`version`** — `version:get`. Module d'exemple, affiché sur l'accueil.
 - **`workspace`** — `workspace:open`, `reopen`, `list`, `current`, `forget`. Registre JSON des espaces connus dans `userData` ; identité de l'espace (id, nom) dans `<racine>/.astro-manager/library.db`, table `workspace`, schéma v1 ; session courante côté main. Côté renderer : injectable `Workspace`, écran d'accueil (sélecteur, espaces récents, oubli d'un récent).
+- **`picture`** — `picture:scan`, `picture:list`. Migration v2 (table `picture`), `kind` (sorte par extension), `walk` (générateur asynchrone d'événements `added | changed | removed`), `store` (`list`, `known`, `apply` en une transaction). Côté renderer : injectable `Picture` (`all` en `resource` sur l'espace courant, `scan()`, `scanning`, `selected` en `linkedSignal`, `select()`), sans écran.
 - **Session** — `src/main/session.ts`, contexte de la bibliothèque ouverte : `current()` rend `OpenWorkspace = { info, db }`, `db` restreint à `prepare | exec`. Construite dans `index.ts`, injectée aux fabriques ; `workspace` seul l'ouvre. Voir `architecture.md`, « La session ».
-- **Renderer** — jetons et trois thèmes, socle et briques CSS, pont par injection (`ELECTRON_API`), `App` aiguillé sur `workspace.current()`. La coquille n'existe qu'en maquette.
+- **Renderer** — jetons et trois thèmes, socle et briques CSS, pont par injection (`ELECTRON_API`), `App` aiguillé sur `workspace.current()`. Deux injectables (`Workspace`, `Picture`) ; la coquille n'existe qu'en maquette.
 
 ## Prochaine étape — `picture`
 
@@ -21,7 +22,7 @@ Le cœur du logiciel et le premier module qui dépend d'un autre. Conçu le 17 s
 **Les quatre PR.**
 
 1. **Session injectée** — _livrée le 17 septembre 2026_. `Session` promue à la racine de main, construite dans `index.ts`, passée à `registerIpcHandlers` puis aux fabriques ; `current()` rend `OpenWorkspace = { info, db }`. Refactor pur ; `architecture.md` à jour.
-2. **`picture` main + shared** — `session: Pick<Session, 'current'>` dans les deps ; migration v2 (table `picture`) ; `walk` (générateur asynchrone, événements `added | changed | removed`), `store`, une transaction synchrone — sans `await` à l'intérieur ; `picture:scan` → résumé, `picture:list` ; `null` = aucun espace ouvert. Injectable `Picture` (`all`, `scan()`, `scanning`, `selected`), sans écran.
+2. **`picture` main + shared** — _livrée le 19 septembre 2026_. `session: Pick<Session, 'current'>` et `fs: WalkDeps['fs']` dans les deps ; migration v2 ; `walk` décrit, `store.apply` écrit, un tableau d'événements entre les deux ; `picture:scan` → résumé, `picture:list` ; `null` = aucun espace ouvert. Injectable `Picture`, sans écran.
 3. **`workspace://` et vignettes** — deux hôtes, `file/<chemin relatif>` et `thumb/<id>` ; résolution pure, réponse en flux, privilèges `standard` + `stream`, CSP `img-src`. Vignettes `.astro-manager/thumbs/<id>.jpg` (360 × 240) générées sur défaut de cache : FITS par un lecteur maison (en-tête, lectures échantillonnées, étirement par percentiles, superpixel si `BAYERPAT`), JPEG/PNG par `nativeImage`, RAW/TIFF en tuile de remplacement ; échec mémorisé pour la session, orphelines purgées au balayage. Seconde arête du module ; `architecture.md` suit.
 4. **Coquille et grille** — `app/shell/` (barre supérieure, rail réduit aux écrans existants, `<router-outlet>`, inspecteur, barre d'état), routes internes `'' → picture`, grille virtualisée **par rangées** (`@angular/cdk`, colonnes dérivées d'un `ResizeObserver`), inspecteur minimal (nom, chemin, sorte, taille, date), « Balayer » dans l'entête de l'écran ; `interface.md` suit.
 
@@ -50,10 +51,20 @@ Ordre indicatif, révisable.
 - **CSS natif, trois thèmes, Plex auto-hébergé** — voir `interface.md`.
 - **La session est le contexte de l'application, pas un détail de `workspace`.** Promue à la racine de main comme `database.ts` ; qui écrit se lit dans le `Pick` des deps ; la connexion exposée est le contrat, encadré par quatre règles — voir `architecture.md`, « La session ».
 - **Pas d'outillage de mémoire externe.** graft essayé et retiré, claude-mem écarté : la mémoire du projet, c'est `docs/` et `git log`.
+- **Id de cliché : entier `AUTOINCREMENT`.** Sans le mot-clé SQLite réutilise un rowid libéré, et une vignette `thumbs/<id>.jpg` orpheline irait au mauvais fichier. Un UUID n'apporterait rien : l'id ne sort jamais de son `library.db`.
+- **`changed` = `mtime` ou `size` différents.** `mtime` est la date du fichier, en ms epoch **entier** — `stats.mtime.getTime()`, jamais `mtimeMs` (fractionnaire, refusé par `STRICT` dans un `INTEGER`).
+- **`created_at` sur `picture` est la date d'entrée au catalogue**, posée sur `added` à l'instant du balayage, jamais retouchée. Un fichier déplacé est une nouvelle ligne.
+- **Le `null` d'un canal ne sort que de l'arête.** Un store rend `[]` ou lance ; une ligne hors domaine en base est un bug, pas une entrée à filtrer.
+- **Collecter, puis transiger.** `walk` ne fait que décrire ; le consommateur tient la politique d'écriture — aujourd'hui « tout, puis une transaction », la plus simple. Le générateur laisse lots, annulation et progression à la boucle `for await` de l'arête, sans toucher `walk`. Un balayage est convergent : un lot appliqué puis un plantage ne corrompt rien, le suivant rattrape.
+- **Fabrique pour ce qui est fixe** pendant la vie du module (`createWalk({ fs, path })` — `path` injecté pour que la spec vérifie le cas Windows par `path.win32`) ; ce qui varie par appel se passe en argument (`db`, `root`, `known`). Un store sans état n'a pas de fabrique : `import * as store`.
+- **Le producteur déclare sa sortie, le consommateur son besoin**, au plus étroit et comme il l'appelle — `ScanEvent` et `KnownMap` sont le contrat de `walk` ; `WalkDeps.fs.readdir` est une signature, pas `typeof fs.readdir`. `store` s'y adapte aux deux bouts (`known` fabrique l'entrée, `apply` consomme la sortie) et importe de `walk`, jamais l'inverse. Une seule frontière ligne → domaine par store : `known` dérive de `list`.
+- **L'état d'un injectable ne se mute que par lui.** Signaux exposés en `asReadonly()`, méthodes pour écrire (`select()`, `scan()`) ; un état lié à un autre est un `linkedSignal` à `source`/`computation` (la sélection suit la liste par `id`, retombe à `null` si le cliché a disparu).
+- **`npm test` avant de conclure, les deux suites.** La suite renderer est restée rouge deux jours après le commit du contrat parce que seule la suite main tournait ; `ng test` vérifie les types, un faux pont incomplet la casse entière.
 
 ## Questions ouvertes
 
 - ESLint : `noUnusedLocals` n'est pas réglé, aucun lint au-delà de `tsc` et Prettier.
+- `lib: ["ES2022"]` dans `tsconfig.electron.json` : pas d'`Array.fromAsync`, on collecte en `for await`. Ajouter `ESNext.Array` ?
 - Un script npm pour `madge --circular` ?
 - Devenir de `version` : module d'exemple, à garder pour un écran « À propos » ou à retirer.
 - « Projet » ou « traitement » — brutes, calibrations, intermédiaires et résultat d'un même objet : à modéliser quand les scripts auront des entrées et des sorties.
@@ -65,13 +76,11 @@ Ordre indicatif, révisable.
 
 Ce que Nyxa a déjà manipulé — l'agent ne le réexplique pas sans demande — et ce qu'il veut rencontrer. L'agent y pioche quand le code s'y prête, sans forcer.
 
-**Acquis** : mapped types et `ChannelsOf` ; annotation sur la variable vs `satisfies` ; variance et validateur partagé (`NoArgChannel`) ; `Handler<C>` comme couture ; `InjectionToken` vs classe injectable ; signaux et `asReadonly()` ; `resource` ; deux étages de specs ; cycles d'injection vs cycles d'import ; `Pick` comme rétrécissement de type sur l'objet réel, et pourquoi recopier une méthode native la détache de `this`.
+**Acquis** : mapped types et `ChannelsOf` ; annotation sur la variable vs `satisfies` ; variance et validateur partagé (`NoArgChannel`) ; `Handler<C>` comme couture ; `InjectionToken` vs classe injectable ; signaux et `asReadonly()` ; `resource` ; deux étages de specs ; cycles d'injection vs cycles d'import ; `Pick` comme rétrécissement de type sur l'objet réel, et pourquoi recopier une méthode native la détache de `this` ; unions discriminées et `switch` exhaustif (`const exhaustive: never`) ; générateurs asynchrones et leur test par itération ; lignes de base (`SQLOutputValue`) vs types de domaine, la frontière `to…` ; `resource` à `params` (`undefined` = repos) et `reload()` ; `linkedSignal` à `source`/`computation`, et l'inférence circulaire que `NoInfer` impose de lever par des génériques explicites ; un type conditionnel ne distribue que sur un paramètre de type nu.
 
 **À rencontrer** :
 
-1. Unions discriminées et `switch` exhaustif (`never`) — `PictureKind`, les événements d'un balayage.
-2. Template literal types — typer `workspace://file/<chemin relatif>` et `workspace://thumb/<id>` pour qu'un chemin absolu soit refusé à la compilation.
-3. `node:sqlite` typé — lignes de base vs types de domaine, migrations, `satisfies` sur un schéma.
-4. `protocol.handle` avec `Response` et flux — servir un fichier sans le charger en mémoire, et le tester sans Electron.
-5. Générateurs asynchrones (`async function*`) pour un balayage progressif, et comment on teste une itération.
-6. Angular : `resource` à `params` dépendant de `workspace.current()`, `linkedSignal`/`computed`, virtual scroll CDK par rangées.
+1. Template literal types — typer `workspace://file/<chemin relatif>` et `workspace://thumb/<id>` pour qu'un chemin absolu soit refusé à la compilation.
+2. `protocol.handle` avec `Response` et flux — servir un fichier sans le charger en mémoire, et le tester sans Electron.
+3. `satisfies` sur un schéma `node:sqlite`.
+4. Angular : `computed`, virtual scroll CDK par rangées, `ResizeObserver` en signal.

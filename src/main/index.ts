@@ -1,5 +1,6 @@
 import { app, BrowserWindow, net, protocol, shell, dialog } from 'electron';
 import * as path from 'node:path';
+import * as fs from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 import { registerIpcHandlers } from './ipc';
 import { resolveRendererFile } from './renderer-files';
@@ -101,7 +102,7 @@ app.whenReady().then(() => {
   });
 
   const session = createSession();
-  registerIpcHandlers({ session, dialog, userDataDir: app.getPath('userData') });
+  registerIpcHandlers({ fs, session, dialog, userDataDir: app.getPath('userData') });
 });
 
 app.on('window-all-closed', () => {

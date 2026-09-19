@@ -1,4 +1,5 @@
 import * as fs from 'node:fs';
+import * as fsPromises from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterAll, beforeEach, describe, expect, expectTypeOf, it, vi } from 'vitest';
@@ -16,14 +17,15 @@ vi.mock('electron', () => ({ ipcMain: { handle: (...args: unknown[]) => handle(.
 
 // Les dépendances réelles sont construites par main/index.ts ; ici des
 // fausses, et une vraie session que rien n'ouvre. Le sélecteur n'est jamais
-// appelé dans ce spec, et le userData ne reçoit rien tant qu'aucun espace
-// n'est ouvert. La session est gardée à part : les deps n'en exposent pas
-// `close`, la spec si.
+// appelé dans ce spec, le userData ne reçoit rien et le disque n'est jamais
+// balayé tant qu'aucun espace n'est ouvert. La session est gardée à part :
+// les deps n'en exposent pas `close`, la spec si.
 const session = createSession();
 const DEPS: IpcDeps = {
   dialog: { showOpenDialog: async () => ({ canceled: true, filePaths: [] }) },
   userDataDir: fs.mkdtempSync(path.join(os.tmpdir(), 'astro-manager-ipc-')),
   session,
+  fs: fsPromises,
 };
 afterAll(() => {
   session.close();
