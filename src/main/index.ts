@@ -1,10 +1,10 @@
-import { app, BrowserWindow, net, protocol, shell, dialog } from 'electron';
+import { app, BrowserWindow, protocol, shell, dialog } from 'electron';
 import * as path from 'node:path';
 import * as fs from 'node:fs/promises';
-import { pathToFileURL } from 'node:url';
 import { registerIpcHandlers } from './ipc';
 import { resolveRendererFile } from './renderer-files';
 import { createSession } from './session';
+import { createServe } from './serve';
 
 // `npm run dev` lance Electron avec --dev : on charge le serveur d'ng serve.
 // Sinon on sert le build Angular via le protocole app://.
@@ -84,12 +84,14 @@ const createWindow = (): void => {
 };
 
 app.whenReady().then(() => {
+  const { serve } = createServe({ fs });
+
   protocol.handle('app', (request) => {
     const { pathname } = new URL(request.url);
     const resolved = resolveRendererFile(pathname, RENDERER_DIR);
 
     return resolved.ok
-      ? net.fetch(pathToFileURL(resolved.file).toString())
+      ? serve(resolved.file, resolved.type)
       : new Response('Bad Request', { status: resolved.status });
   });
 
