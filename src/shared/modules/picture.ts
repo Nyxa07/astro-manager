@@ -21,6 +21,5 @@ export type FileUrl = `workspace://file/${string}`;
 export type RelativePath<P> = P extends `/${string}` ? never : P;
 
 export const thumbUrl = (id: number): ThumbUrl => `workspace://thumb/${id}`;
-
 export const fileUrl = <P extends string>(path: RelativePath<P>): FileUrl =>
   `workspace://file/${path.split('/').map(encodeURIComponent).join('/')}`;

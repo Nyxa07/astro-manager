@@ -3,7 +3,6 @@ import type { PictureInfo, PictureKind } from '../../../shared/modules/picture';
 import type { WorkspaceInfo } from '../../../shared/modules/workspace';
 import { toBgra } from './raster';
 import { decodeFits, FitsError, type FitsDeps } from './fits';
-import { KnownMap } from './walk';
 
 export type ThumbDeps = {
   nativeImage: NativeImage;
