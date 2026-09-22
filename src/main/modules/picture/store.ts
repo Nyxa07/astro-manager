@@ -18,11 +18,27 @@ const toPictureInfo = (record: Record<string, SQLOutputValue>): PictureInfo => {
   };
 };
 
+const COLUMNS = 'id, path, kind, size, mtime';
+
 export const list = (db: Pick<DatabaseSync, 'prepare'>): PictureInfo[] => {
-  const rows = db
-    .prepare('SELECT id, path, kind, size, mtime FROM picture ORDER BY path ASC')
-    .all();
+  const rows = db.prepare(`SELECT ${COLUMNS} FROM picture ORDER BY path ASC`).all();
   return rows.map(toPictureInfo);
+};
+
+export const findById = (db: Pick<DatabaseSync, 'prepare'>, id: number): PictureInfo | null => {
+  const row = db.prepare(`SELECT ${COLUMNS} FROM picture WHERE id = ?`).get(id);
+  if (!row) {
+    return null;
+  }
+  return toPictureInfo(row);
+};
+
+export const findByPath = (db: Pick<DatabaseSync, 'prepare'>, path: string): PictureInfo | null => {
+  const row = db.prepare(`SELECT ${COLUMNS} FROM picture WHERE path = ?`).get(path);
+  if (!row) {
+    return null;
+  }
+  return toPictureInfo(row);
 };
 
 export const known = (db: Pick<DatabaseSync, 'prepare'>): KnownMap =>

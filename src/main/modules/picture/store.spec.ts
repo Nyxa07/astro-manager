@@ -63,6 +63,44 @@ describe('list', () => {
   });
 });
 
+describe('findById et findByPath', () => {
+  // Les deux lectures unitaires du protocole workspace:// : c'est le catalogue
+  // qui dit si un id ou un chemin existe, et le handler en tire son 404.
+
+  it('rend le cliché entier, taille comprise', () => {
+    insert('M31/light_001.fits');
+    const expected = {
+      id: 1,
+      path: 'M31/light_001.fits',
+      kind: 'fits',
+      size: 1024,
+      mtime: 1_700_000_000_000,
+    };
+    expect(store.findById(db, 1)).toEqual(expected);
+    expect(store.findByPath(db, 'M31/light_001.fits')).toEqual(expected);
+  });
+
+  it('rend null pour un id ou un chemin inconnu', () => {
+    insert('M31/light_001.fits');
+    expect(store.findById(db, 404)).toBeNull();
+    expect(store.findByPath(db, 'M31/absent.fits')).toBeNull();
+  });
+
+  it('ne confond pas deux clichés', () => {
+    insert('M31/light_001.fits');
+    insert('M42/light_001.fits', 'jpeg');
+    expect(store.findById(db, 2)).toMatchObject({ path: 'M42/light_001.fits', kind: 'jpeg' });
+    expect(store.findByPath(db, 'M31/light_001.fits')).toMatchObject({ id: 1, kind: 'fits' });
+  });
+
+  it("n'interprète pas le chemin : il est comparé tel quel", () => {
+    insert('M31/light_001.fits');
+    // Pas de jokers SQL, pas de normalisation : le chemin est une clé.
+    expect(store.findByPath(db, 'M31/light_00_.fits')).toBeNull();
+    expect(store.findByPath(db, '%')).toBeNull();
+  });
+});
+
 describe('known', () => {
   it('rend une Map vide sur un catalogue vierge', () => {
     expect(store.known(db)).toEqual(new Map());
