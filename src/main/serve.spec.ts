@@ -59,6 +59,19 @@ describe('serve', () => {
     await expect(response.text()).resolves.toBe('<!doctype html><title>astro</title>');
   });
 
+  // Sans en-tête, Chromium ne réutilise pas la réponse faute de `Last-Modified`
+  // pour estimer sa fraîcheur. Le jour où serve en enverra un — `Range` le
+  // demandera —, l'heuristique garderait un index.html périmé. La politique
+  // est écrite, pas déduite.
+  it('impose la revalidation : un même chemin peut changer de contenu', async () => {
+    const file = path.join(dir, 'index.html');
+    fs.writeFileSync(file, '<!doctype html>');
+
+    const response = await serve(file, 'text/html');
+
+    expect(response.headers.get('cache-control')).toBe('no-cache');
+  });
+
   it("répond en flux : la lecture anticipée est bornée, le fichier n'est pas chargé", async () => {
     const { file, state } = fakeFile(1000, 16);
     const response = await serveFake(file)('gros.bin', 'application/octet-stream');

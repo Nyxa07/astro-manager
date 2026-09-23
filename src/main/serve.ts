@@ -31,7 +31,15 @@ export const createServe = (deps: ServeDeps) => {
         await servedFile.close();
         return new Response(null, { status: 404 });
       }
-      const headers = new Headers({ 'Content-Length': stat.size.toString(), 'Content-Type': type });
+      // Tout ce que serve rend peut changer sous la même URL : index.html à
+      // chaque build, une vignette régénérée, un original retouché. `no-cache`
+      // n'interdit pas de garder la réponse, il impose de revalider avant de la
+      // resservir — ici une simple lecture disque.
+      const headers = new Headers({
+        'Cache-Control': 'no-cache',
+        'Content-Length': stat.size.toString(),
+        'Content-Type': type,
+      });
 
       return new Response(Readable.toWeb(servedFile.createReadStream()), { headers });
     } catch (e) {
