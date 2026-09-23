@@ -11,6 +11,7 @@ describe('resolveRendererFile', () => {
       expect(resolveRendererFile('/main-UNO7WLQS.js', ROOT)).toEqual({
         ok: true,
         file: inRoot('main-UNO7WLQS.js'),
+        type: 'application/javascript',
       });
     });
 
@@ -18,6 +19,7 @@ describe('resolveRendererFile', () => {
       expect(resolveRendererFile('/media/logo.png', ROOT)).toEqual({
         ok: true,
         file: inRoot('media', 'logo.png'),
+        type: 'image/png',
       });
     });
 
@@ -25,19 +27,44 @@ describe('resolveRendererFile', () => {
       expect(resolveRendererFile('/index.html', ROOT)).toEqual({
         ok: true,
         file: inRoot('index.html'),
+        type: 'text/html',
+      });
+    });
+
+    it("étiquette un asset par l'extension de son chemin", () => {
+      expect(resolveRendererFile('/styles-ABC123.css', ROOT)).toMatchObject({ type: 'text/css' });
+    });
+
+    it('étiquette les polices auto-hébergées', () => {
+      expect(resolveRendererFile('/media/plex-sans.woff2', ROOT)).toMatchObject({
+        type: 'font/woff2',
+      });
+    });
+
+    it('sert ce qu’il ne reconnaît pas en octets, jamais en refus', () => {
+      expect(resolveRendererFile('/media/inconnu.bin', ROOT)).toMatchObject({
+        ok: true,
+        type: 'application/octet-stream',
       });
     });
   });
 
   describe('fallback SPA', () => {
     it('renvoie index.html à la racine', () => {
-      expect(resolveRendererFile('/', ROOT)).toEqual({ ok: true, file: inRoot('index.html') });
+      expect(resolveRendererFile('/', ROOT)).toEqual({
+        ok: true,
+        file: inRoot('index.html'),
+        type: 'text/html',
+      });
     });
 
-    it('renvoie index.html sur une route sans extension', () => {
+    it('renvoie index.html sur une route sans extension, avec le type du fichier servi', () => {
+      // Le type se lit sur ce qu'on sert, pas sur ce qui a été demandé : une
+      // route interne rechargée doit s'afficher, pas se télécharger.
       expect(resolveRendererFile('/reglages/avance', ROOT)).toEqual({
         ok: true,
         file: inRoot('index.html'),
+        type: 'text/html',
       });
     });
   });

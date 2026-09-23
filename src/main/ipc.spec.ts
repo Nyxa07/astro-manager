@@ -6,7 +6,7 @@ import { afterAll, beforeEach, describe, expect, expectTypeOf, it, vi } from 'vi
 import { IPC, type ChannelsOf, type ElectronApi, type IpcChannel } from '../shared/ipc';
 import type { VersionKey } from '../shared/modules/version';
 import type { WorkspaceInfo } from '../shared/modules/workspace';
-import { registerIpcHandlers, type IpcDeps } from './ipc';
+import { createModules, registerIpcHandlers, type IpcDeps, type Modules } from './ipc';
 import { versionModule } from './modules/version';
 import { createSession } from './session';
 
@@ -19,14 +19,25 @@ vi.mock('electron', () => ({ ipcMain: { handle: (...args: unknown[]) => handle(.
 // fausses, et une vraie session que rien n'ouvre. Le sélecteur n'est jamais
 // appelé dans ce spec, le userData ne reçoit rien et le disque n'est jamais
 // balayé tant qu'aucun espace n'est ouvert. La session est gardée à part :
-// les deps n'en exposent pas `close`, la spec si.
+// les deps n'en exposent pas `close`, la spec si. `nativeImage` n'est jamais
+// sollicité : aucun canal ne rend de vignette, c'est le protocole qui le fait.
 const session = createSession();
+const unreachable = () => {
+  throw new Error('nativeImage ne devrait pas être appelé depuis un canal IPC');
+};
 const DEPS: IpcDeps = {
   dialog: { showOpenDialog: async () => ({ canceled: true, filePaths: [] }) },
   userDataDir: fs.mkdtempSync(path.join(os.tmpdir(), 'astro-manager-ipc-')),
   session,
   fs: fsPromises,
+  nativeImage: { createFromPath: unreachable, createFromBitmap: unreachable },
 };
+
+// Construits une fois, comme main/index.ts : `registerIpcHandlers` et
+// `registerProtocols` consomment le même enregistrement. Deux constructions
+// donneraient deux caches de vignettes, dont l'un mémoriserait des échecs que
+// l'autre ignore.
+const MODULES: Modules = createModules(DEPS);
 afterAll(() => {
   session.close();
   fs.rmSync(DEPS.userDataDir, { recursive: true, force: true });
@@ -55,7 +66,7 @@ const listenerFor = (channel: string): Listener => {
 describe('registerIpcHandlers', () => {
   beforeEach(() => {
     handle.mockClear();
-    registerIpcHandlers(DEPS);
+    registerIpcHandlers(MODULES);
   });
 
   it('enregistre un handler pour chaque canal du contrat partagé', () => {
@@ -82,6 +93,21 @@ describe('arbre des canaux', () => {
   });
 });
 
+// `createModules` est le point de construction unique de main : l'IPC et les
+// protocoles s'y servent tous les deux. Un module peut donc porter plus que
+// des canaux — picture y ajoute son arête `workspace://`.
+describe('createModules', () => {
+  it('expose une entrée nommée par module', () => {
+    expect(Object.keys(MODULES).sort()).toEqual(['picture', 'version', 'workspace']);
+  });
+
+  it('porte le protocole de picture, que registerProtocols branche sur workspace://', () => {
+    expectTypeOf<Modules['picture']['protocol']>().toEqualTypeOf<
+      (request: Request) => Promise<Response>
+    >();
+  });
+});
+
 describe('dispatch', () => {
   let invoke: Listener;
 
@@ -89,7 +115,7 @@ describe('dispatch', () => {
     handle.mockClear();
     handler.mockClear();
     validator.mockClear();
-    registerIpcHandlers(DEPS);
+    registerIpcHandlers(MODULES);
     invoke = listenerFor(IPC.version.get);
   });
 

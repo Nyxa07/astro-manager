@@ -7,10 +7,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <!-- https://developer.mozilla.org/fr/docs/Web/HTTP/CSP
        style-src 'unsafe-inline' : Angular injecte les styles de composants dans des <style>.
+       img-src workspace: : vignettes et originaux de l'espace ouvert ; 'self' est
+       app://local, le schéma est une autre origine. Seul img-src l'accepte — rien
+       d'exécutable ne vient de l'espace de l'utilisateur.
        ws://localhost:4200 : rechargement à chaud de `ng serve` (npm run dev). -->
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' ws://localhost:4200"
+      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: workspace:; connect-src 'self' ws://localhost:4200"
     />
   </head>
   <body>

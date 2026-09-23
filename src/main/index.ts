@@ -1,10 +1,9 @@
-import { app, BrowserWindow, net, protocol, shell, dialog } from 'electron';
+import { app, BrowserWindow, shell, dialog, nativeImage } from 'electron';
 import * as path from 'node:path';
 import * as fs from 'node:fs/promises';
-import { pathToFileURL } from 'node:url';
-import { registerIpcHandlers } from './ipc';
-import { resolveRendererFile } from './renderer-files';
+import { createModules, registerIpcHandlers } from './ipc';
 import { createSession } from './session';
+import { registerProtocols, registerProtocolSchemes } from './protocols';
 
 // `npm run dev` lance Electron avec --dev : on charge le serveur d'ng serve.
 // Sinon on sert le build Angular via le protocole app://.
@@ -15,15 +14,9 @@ const PRELOAD = path.join(__dirname, '..', 'preload', 'index.js');
 const RENDERER_DIR = path.resolve(__dirname, '..', '..', 'renderer');
 const APP_ORIGIN = 'app://local';
 
-// Doit être appelé avant app.whenReady().
-// standard : donne une vraie origine (app://local) au lieu d'une origine opaque.
-// secure   : la fait traiter comme HTTPS — localStorage, service workers, etc.
-protocol.registerSchemesAsPrivileged([
-  {
-    scheme: 'app',
-    privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true },
-  },
-]);
+// Les privilèges des schémas (app://, workspace://) se déclarent avant
+// app.whenReady() ; les handlers, après. Deux moments, deux appels.
+registerProtocolSchemes();
 
 /**
  * Seule origine où la fenêtre a le droit d'aller.
@@ -84,15 +77,21 @@ const createWindow = (): void => {
 };
 
 app.whenReady().then(() => {
-  protocol.handle('app', (request) => {
-    const { pathname } = new URL(request.url);
-    const resolved = resolveRendererFile(pathname, RENDERER_DIR);
-
-    return resolved.ok
-      ? net.fetch(pathToFileURL(resolved.file).toString())
-      : new Response('Bad Request', { status: resolved.status });
+  const session = createSession();
+  const modules = createModules({
+    fs,
+    session,
+    dialog,
+    userDataDir: app.getPath('userData'),
+    nativeImage,
   });
 
+  // Les modules sont construits une fois : l'IPC et les protocoles servent le
+  // même `picture`, donc le même cache de vignettes. La fenêtre vient en
+  // dernier — elle charge app://local dès sa création et ne doit rien trouver
+  // de manquant.
+  registerProtocols(modules, { fs, rendererDir: RENDERER_DIR });
+  registerIpcHandlers(modules);
   createWindow();
 
   app.on('activate', () => {
@@ -100,9 +99,6 @@ app.whenReady().then(() => {
       createWindow();
     }
   });
-
-  const session = createSession();
-  registerIpcHandlers({ fs, session, dialog, userDataDir: app.getPath('userData') });
 });
 
 app.on('window-all-closed', () => {
