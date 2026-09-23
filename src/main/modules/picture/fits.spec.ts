@@ -215,6 +215,19 @@ describe('layoutOf', () => {
 });
 
 describe('decodeFits', () => {
+  // Une pose unitaire est bruitée pixel à pixel. Douze groupes de quatre
+  // colonnes : un peigne (une colonne sur quatre à 200, les autres à 0, soit
+  // 50 de moyenne), un aplat à 50, un aplat à 100. Moyennés, le peigne et le
+  // premier aplat sont indiscernables ; avec un pixel sur quatre, le peigne
+  // sortirait blanc.
+  const comb = (column: number): number => {
+    const group = Math.floor(column / 4);
+    if (group < 4) return column % 4 === 0 ? 200 : 0;
+    return group < 8 ? 50 : 100;
+  };
+  const COMB_BOUNDS = { width: 12, height: 1 };
+  const COMB_EXPECTED = [...Array<number>(8).fill(0), ...Array<number>(4).fill(255)];
+
   it("décode un 16 bits et remet l'image à l'endroit : la dernière ligne stockée est en haut", async () => {
     // L'origine FITS est en bas à gauche : y = 2 est le haut de l'image.
     const { raster } = await decode({ bitpix: 16, naxis: [4, 3], pixel: (_, y) => y * 1000 });
@@ -229,6 +242,13 @@ describe('decodeFits', () => {
     expect(raster).toMatchObject({ width: 300, height: 200 });
     // 200 lignes lues sur 800, plus l'en-tête.
     expect(stats.bytesRead).toBeLessThan((1200 * 800) / 3);
+  });
+
+  it("moyenne les colonnes d'une ligne lue au lieu de n'en garder qu'une", async () => {
+    const image: Image = { bitpix: 16, naxis: [48, 4], pixel: (x) => comb(x) };
+    const { raster } = await decode(image, COMB_BOUNDS);
+    expect(raster).toMatchObject({ width: 12, height: 1 });
+    expect(channel(raster, 0)).toEqual(COMB_EXPECTED);
   });
 
   it('lit trois plans en RGB, chaque plan étiré pour lui-même', async () => {
@@ -277,6 +297,18 @@ describe('decodeFits', () => {
         const flat = channel(raster, c).every((v) => v === 0);
         expect(flat, `canal ${c}`).toBe(c !== varying);
       }
+    });
+
+    it("moyenne les cellules d'une paire de lignes lue, canal par canal", async () => {
+      const image: Image = {
+        bitpix: 16,
+        naxis: [96, 8],
+        cards: { BAYERPAT: 'RGGB' },
+        pixel: (x, y) => (x % 2 === 0 && y % 2 === 0 ? comb(x / 2) : 5),
+      };
+      const { raster } = await decode(image, COMB_BOUNDS);
+      expect(raster).toMatchObject({ width: 12, height: 1 });
+      expect(channel(raster, 0)).toEqual(COMB_EXPECTED);
     });
 
     it('moyenne les deux verts', async () => {

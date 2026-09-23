@@ -191,7 +191,13 @@ export const stretch = (values: Float64Array): Uint8Array => {
   return out;
 };
 
-/** Le pas qui fait tenir `size` dans `bound` : des lignes et colonnes sautées, jamais interpolées. */
+/**
+ * Le pas qui fait tenir `size` dans `bound`. Les lignes sont sautées — c'est ce
+ * qui borne la lecture —, les colonnes d'une ligne lue sont moyennées : la
+ * ligne est en mémoire de toute façon, et garder un pixel sur `step` garderait
+ * tout le bruit d'une pose unitaire. La moyenne le divise par √step sans un
+ * octet lu de plus.
+ */
 const strideFor = (size: number, bound: number): number => Math.max(1, Math.ceil(size / bound));
 
 const interleave = (width: number, height: number, [r, g, b]: Uint8Array[]): Raster => {
@@ -221,7 +227,12 @@ const decodePlanes = async (file: FitsFile, layout: Layout, bounds: Bounds): Pro
       // la première du raster.
       const y = height - 1 - j * step;
       await readExact(file, row, dataOffset + (plane * height + y) * width * bpp);
-      for (let i = 0; i < outW; i++) samples[j * outW + i] = read(row, i * step * bpp);
+      for (let i = 0; i < outW; i++) {
+        const end = Math.min(width, (i + 1) * step);
+        let sum = 0;
+        for (let x = i * step; x < end; x++) sum += read(row, x * bpp);
+        samples[j * outW + i] = sum / (end - i * step);
+      }
     }
     channels.push(stretch(samples));
   }
@@ -231,7 +242,8 @@ const decodePlanes = async (file: FitsFile, layout: Layout, bounds: Bounds): Pro
 /**
  * Superpixel : chaque cellule 2 × 2 de la matrice devient un pixel couleur,
  * les deux verts moyennés. Le motif s'applique à la première ligne stockée,
- * comme Siril le lit par défaut.
+ * comme Siril le lit par défaut. Comme pour les plans, les cellules d'une paire
+ * de lignes lue sont moyennées par canal.
  */
 const decodeBayer = async (
   file: FitsFile,
@@ -256,18 +268,20 @@ const decodeBayer = async (
     const cy = cellsH - 1 - j * step;
     await readExact(file, rows, dataOffset + 2 * cy * rowBytes);
     for (let i = 0; i < outW; i++) {
-      const x = 2 * i * step * bpp;
-      const values = [
-        read(rows, x),
-        read(rows, x + bpp),
-        read(rows, rowBytes + x),
-        read(rows, rowBytes + x + bpp),
-      ];
       const sum = [0, 0, 0];
       const count = [0, 0, 0];
-      for (let s = 0; s < 4; s++) {
-        sum[sites[s]] += values[s];
-        count[sites[s]]++;
+      for (let cx = i * step; cx < Math.min(cellsW, (i + 1) * step); cx++) {
+        const x = 2 * cx * bpp;
+        const values = [
+          read(rows, x),
+          read(rows, x + bpp),
+          read(rows, rowBytes + x),
+          read(rows, rowBytes + x + bpp),
+        ];
+        for (let s = 0; s < 4; s++) {
+          sum[sites[s]] += values[s];
+          count[sites[s]]++;
+        }
       }
       for (let c = 0; c < 3; c++) samples[c][j * outW + i] = sum[c] / count[c];
     }
